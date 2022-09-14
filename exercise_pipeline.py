@@ -122,6 +122,17 @@ def main() :
     #     experiment_folder_path = path_from_experiment_index[experiment_index]
     #     run_subprocess(['ln', '-s', experiment_folder_path, incoming_folder_path])
 
+    # Count and report how many experiments will be analyzed
+    box_data_folder_path = os.path.join(gruff_folder_path, 'box_data')
+    name_from_experiment_index = os.listdir(box_data_folder_path)
+    #path_from_experiment_index = [ os.path.join(box_data_folder_path, name) for name in name_from_experiment_index ]
+    experiment_count = len(name_from_experiment_index)
+    if experiment_count == 0 :
+        printfe('No experiments to track in %s.\n' % incoming_folder_path)
+        return
+    printfe('There are %d experiments that will be tracked.\n' % experiment_count)
+
+
     # Each experiment consists of multiple 'protocols' (usually two, named 01_something and 02_something).
     # Within each protocol, there are several sequences, e.g. seq1, seq2, seq 8.
     # There's a .avi video for each sequence.
@@ -178,7 +189,7 @@ def main() :
     # Declare victory
     printfe("Pipeline finished successfully.\n")
 
-    
+
 
 # If called from command line, run main()
 if __name__ == "__main__":
