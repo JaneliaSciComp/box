@@ -1,0 +1,406 @@
+This is a text version of:
+https://www.evernote.com/shard/s383/client/snv?noteGuid=3e51a565-dbb7-430c-8a7a-ace6bc04d952&noteKey=fb4c647844649b59c2cff45255ed2390&sn=https%3A%2F%2Fwww.evernote.com%2Fshard%2Fs383%2Fsh%2F3e51a565-dbb7-430c-8a7a-ace6bc04d952%2Ffb4c647844649b59c2cff45255ed2390&title=New%2BBox%2BAnalysis
+as it was on 2022-09-14.
+
+commands in blue
+example commands in green
+lilac is for PC commands
+
+
+Step 1: Copy files from computer to dm11
+
+1) Open Terminal application (make sure you are either on Secure wifi or plugged in to the network through ethernet)
+2) Type ssh boxuser@flyolympiad Password is: b0xuser!
+3) Type cd box
+4) Type cd scripts
+5) (optional) Type vim copy_apollo_experiments.sh or vim copy_orion_experiments.sh to check and edit the files
+6) Run script by typing ./copy_apollo_experiments.sh and/or ./copy_orion_experiments.sh
+
+    Once this script is run, the files should be copied from the PC in the room which runs the boxes to smb://dm11/groups/reiser/flyvisionbox/box_data
+        from windows: \\dm11.hhmi.org\groups\reiser\flyvisionbox\box_data 
+    each experiment folder should contain the following at this point of the analysis:
+        Two folders named 02_5.34_34 and 01_5.34_34
+            Each of these folders contains 4 avi files, 4 avi.mat files, one .seq file and two matlab files (.mat or .m)
+        Seven files:
+            Two .mat files titled 01_Transition_to_5.34 and 02_Transition_to_5.34
+            ROI.txt
+            TheBoxDefaultXmlFile_last.xml
+            Experiment_Name_Metadata.xml
+            Experiment_Name_RunData.mat
+            Experiment_Name.exp
+
+
+Step 2: Track movies
+Once all of the files have been copied over, we want to track them
+
+1) Type cd ../ if still in the scripts folder or cd /groups/reiser/home/boxuser/box/
+
+    Go into the manual pipeline folder for tracking box experiments
+    The processing time of step2 may have timed you out of your login. If it can’t find this directory, login again following steps 1.1 and 1.2
+
+2) run the command . /misc/lsf/conf/profile.lsf while logged in as the boxuser
+
+    This will give you permission you to run bjobs later in the analysis
+
+3) Type cd ./00_incoming
+
+    Move into the 00_incoming folder
+
+4) Type ls
+
+    List all of the items in the 00_incoming folder. This should return nothing because 00_incoming should be empty. If there are items in here, let me know...
+
+5) Type ln -s <FULL PATH TO DATA IN DM11>/* .
+
+    Creates symbolic links of the experiment folders in the 00_incoming folder
+         e.g.   ln -s /groups/reiser/flyvisionbox/box_data/*20200313* . (note the space between the last asterisk and the period) ln -s /groups/reiser/flyvisionbox/box_data/*20220422* .
+
+6) Type ‘cd ..'
+
+     Go back one folder
+
+7) Type ./scripts/TubeSplitter/avi_extract.sh
+
+     Run the script to split 1 movie into 6, each containing a tube. Don’t run the next step until this one is finished! 
+        You can check on the progress of this step by typing ‘bjobs’, which should just show you a bunch of jobs.
+    Once bjobs returns nothing, the process is complete
+    In addition to the files and folders listed above, this step added the following:
+        Inside each of the 02_5.34_24 and 01_5.34_34 folders:
+            24 new avi files and a file called “6”
+        A folder named “Logs”
+
+8) Type ./scripts/SBFMFConversion/avi_sbfmf_conversion.sh
+
+    This converts the movies from .avi to .sbfmf. Again, don’t run the next step until this one is finish — you can check on all of these jobs with ‘bjobs’.
+    After this script is run, the following changes are made inside each of the 02_5.34_24 and 01_5.34_34 folders:
+        the 24 avi files made in the last step are gone
+        6 new sbfmf folders appear, one for each tube
+        Each of the 6 new sbfmf folders created contains 9-11 files: four .sbfmf, three-five .log, one .summary, and one .pickle
+
+9) Type ./scripts/FlyTracking/fotrak.sh
+
+    This tracks the movies.
+    After this script is run, the following changes are made to the contents of each experiment:
+        The folder Output_1.1_1.7 is created.
+             Inside this folder are 2 other folders called 02_5.34_24 and 01_5.34_34
+            Inside each of those folders will be 24 additional folders
+            Each of the 24 folders contains 11 files: 5 .mat, 4 .bmp, 1 .xls, & 1 .txt
+
+10) When that’s done, type cd ./02_fotracked
+
+    Go into the output folder
+
+11) Type ls
+
+    This checks to make sure your files made it through the pipeline! If they’re all there, move onto the next step. If they’re not there, something went wrong somewhere.
+
+12) Type rm ./*
+
+    Remove the symbolic links from the pipeline folders
+
+
+
+Step 3: Analysis
+Now that the movies have been copied and tracked, we can do analysis
+
+1) Make sure you are connected to the server smb://dm11/flyvisionbox on your computer. If not go to Finder> Go> Connect to server
+     -on PC map network drive \\dm11.hhmi.org\flyvisionbox
+2) In the terminal application, type cd .. if still in the box folder and then cd /dm11/flyvisionbox/box_data 
+        -on a PC: do this in GitShell instead:
+               cd  //dm11.hhmi.org/flyvisionbox/box_data
+
+    depending on the amount of time it takes to complete step2, you may need to sign in  again before trying this step by typing ssh boxuser@flyolympiad . Password is: b0xuser! 
+
+3) Type ls and copy all of the folder names in case they are needed later
+4) Log out of boxes by typing logout in the terminal.
+5) To make sure you’re using the most up-to-date matlab files for analysis:
+     On Mac:
+     a. Navigate to the analysis.git folder in the terminal. 
+          E.g. cd Documents/MATLAB/Box/Analysis cd ..   
+     b. type git pull /Volumes/flyvisionbox/Analysis.git    
+      c. If this is the first time you’re using the git, you must first copy it somewhere you can use it. For example:
+          i. cd Documents/MATLAB/Box 
+           ii. git init
+          iii. git clone /Volumes/flyvisionbox/Analysis.git                    
+     On PC:
+       a. Navigate to the analysis.git folder in the terminal. 
+             E.g.  cd ~/Documents/MATLAB/Box/Analysis
+        b. type: git pull //dm11.hhmi.org/flyvisionbox/Analysis.git
+        c. If this is the first time you’re using the git, you must first copy it somewhere you can use it. For example:
+          i.  cd  ~/Documents/MATLAB/Box
+          ii. git init
+          iii. git clone//dm11.hhmi.org/flyvisionbox/Analysis.git
+6) Open MATLAB. Find the function “batch analysis” in the Analysis.git/Prot5_Analysis folder and make sure it and all the scripts it calls are in your path 
+
+    In my case, this is in Documents/Matlab/Box. I right click on the folder Box and then choose Add to Path> All folders and subfolders
+
+7) In batch_analysis.m, make sure the root directory (line 8) is correct.
+
+     For example, in many cases, it should read   '/Volumes/flyvisionbox/box_data/‘ Remember to end in a slash or the program will concatenate the file names and will not recognize the directory
+
+8) Choose a filelist (line 13 or Line 16) to work from.
+
+    Uncomment line 13 if you wish to analyze all the experiments from a given date (most common). Make sure Line 16 is commented.
+    If you need to analyze individual experiment from disparate dates: paste all of the file names you copied in step 3. Each individual name needs to be enclosed by apostrophes. Each filename that is followed by a new line will need to have a comma and ellipsis after the last apostrophe. 
+        E.g.  'GMR_SS00194_UAS_Shi_ts1_UAS_Kir21_Apollo_20150826T091348',...
+        Make sure line 13 is commented
+
+9) go the the for loop in batch_analysis.m and uncomment the first script,  merge_analysis_output(fullfile(rootdir,filelist(i).name),outdir);. Everything else should be commented
+10) Save and run batch_analysis.m
+11) go the the for loop in batch_analysis.m and uncomment the second script,   box_analysis(fullfile(rootdir,filelist(i).name),outdir); Everything else should be commented
+12) Save and run batch_analysis.m
+13) Open the MATLAB function “getBoxData.” This compiles all experiments into a struct and classifies them by various features.
+14) Check to make sure the control genotypes listed from lines 23 and 30 are correct. Also make sure the directories are correct
+15) Run getBoxData
+18) go the the for loop in batch_analysis.m and uncomment the third script,  prot_534_comparison_summary(BoxData,'split_control',filelist(i).name, 'mean_dir_index',1,1,'comparison_summary’);. Everything else should be commented.
+
+    If your experiments require the gal4 controls instead of the split control, change ‘split_control’ to read ‘gal4_control’ in the script
+    If you are using the file list for individual experiments (line 16) instead of for all experiments from a single date (line 13) the script will need to be written to remove the ‘.name’ from file list as follows:
+        prot_534_comparison_summary(BoxData,'gal4_control', filelist(i), 'mean_dir_index',1,1,'comparison_summary');
+
+19) Save and run batch_analysis.m
+20) To collect all the comparison summaries into one folder in the flyvisionbox, go back to your terminal and sign in by typing ssh boxuser@login1 Password is: b0xuser! 
+21) type cd /../groups/reiser/flyvisionbox
+22) type ./copy_cs.sh
+23) To plot duplicates on the same graphs, run the function “plotduplicates” found in the Analysis.git folder in MATLAB
+
+    This function will not plot anything for which a graph already exists in the folder. I.e. if you run it and a sample had two runs, it will not plot the third one run on a later date. The original graph will need to be deleted from the folder in order to run this function again and get all three runs plotted on one graph
+
+
+
+
+Additional Notes for Troubleshooting
+
+A note for A Stalled Experiment:
+
+    Every now and then, the experiment will finish, but the robot does not terminate the run and it must be manually terminated.
+    When this happen, certain mat files will not be included in the folder. We can copy them from another experiment on the same day, since they mostly contain the same information, and then change the name from the good experiment to the stalled experiment.
+    Navigate to the folders missing files
+        Type ssh boxuser@flyolympiad Password: b0xuser!
+        Type cd /groups/reiser/flyvisionbox/box_data
+        Type cd FULLExperimentName
+            Example cd JHS_K_85321_trp_Orion_20200313T154306
+        Type cd 02_5.34_34
+    Copy files from another experiment run on Orion and run the same day (note the space and periods after each command)
+        Type cp ../../FULLNameOfCompletedExperiment/02_5.34_34/*.mat .
+        Type cp ../../FULLNameOfCompletedExperiment/02_5.34_34/sequence_details_NameofComplete.m .
+        Type cp ../../FULLNameOfCompletedExperiment/02_5.34_34/5.34.seq .
+            Example
+                cp ../../GMR_SS03833_trp_Orion_20200313T130206/02_5.34_34/*.mat .
+                cp ../../GMR_SS03833_trp_Orion_20200313T130206/02_5.34_34/sequence_details_SS03833_trp_Orion.m .
+                cp ../../GMR_SS03833_trp_Orion_20200313T130206/02_5.34_34/5.34.seq .
+    Rename files
+        Type mv sequence_details_NameofComplete.m sequence_details_NameofIncomplete.m
+            Example mv sequence_details_GMR_SS03833_trp_Orion.m sequence_details_JHS_K_85321_trp_Orion_20200313T154306.m
+        Type vim sequence_details_NameofIncomplete.m
+            Example  vim sequence_details_JHS_K_85321_trp_Orion_20200313T154306.m
+        Hit the esc key to enter a mode where you can give commands in the vim editor. When you start typing the next line, the cursor will appear at the bottom of the page
+        Type :%s/Name_of_Complete/Name_of_Incomplete/g
+            Example :%s/GMR_SS03833/JHS_K_85321/g
+            the colon indicates you are giving a command
+            The %s indicates you want substitutions to be made for the entire file
+            The g indicates global substitution. Without g, it will only replace the first instance in each line
+        hold shift key while typing z z to exit vim mode
+
+
+A Note for Removing Files from Flyvisionbox
+
+    Files cannot be removed manually from flyvisionbox because this requires special permission
+    Sometimes, experiment runs have errors and must be removed so they do not affect analysis.
+    Navigate to the folders you want to remove
+        Type ssh boxuser@flyolympiad Password: b0xuser!
+        Type cd /tier2/flyvisionbox/box_data NOTE: probably wrong command. Correct Command: cd /groups/reiser/flyvisionbox/box_data
+        Type rm -rf /tier2/flyvisionbox/box_data/FULLExperimentName NOTE: probably wrong. Correct according to above correction
+            e.g.  rm -rf /groups/reiser/flyvisionbox/box_data/JHS_K_85321_trp_Orion_20190524T153923/Output_1.1_1.7/01_5.34_34/01_5.34_seq1_tube5
+
+
+A Note for Moving files in Flyvisionbox
+
+    Files cannot be moved manually around flyvisionbox because this requires special permission
+    Sometimes, experiment runs have errors and must be removed so they do not affect analysis.
+    To make a new folder:
+        Navigate to the directory you want to add it to
+            e.g. cd /tier2/flyvisionbox/box_data
+            mv GMR_SS33673_shi_Orion_20170915T133244 bad_experiments
+            mv JHS_K_85321_trp_Orion_20190308T150158 bad_experiments
+        Type mkdir NameOfNewFolder
+    To move folders into a different folder:
+        Type mv NameOfFile NameOfNewFolder
+            e.g. cd /groups/reiser/flyvisionbox/box_data/*20170826* .
+        Or if moving several files with a common string in their names, you can use:
+            mv NameOfFile* NameOfNewFolder
+
+
+A Note for Removing Files from BoxData
+
+    When running the script getboxdata, information is stored in a .mat file in the flyvisionbox drive
+    Occasionally, files need to be removed because of errors, but this will not change or replace the information already stored in BoxData.mat and may affect future experiments or analysis
+    Find the entry in the BoxData.mat for the file you want to remove. Load the file into matlab from /tier2/flyvisionbox/box_data
+        Type find(strcmp({BoxData.experiment_name},’Full_experiment_name'))
+            E.g. find(strcmp({BoxData.experiment_name},'GMR_SS02427_shi_Orion_20160222T134359’))
+        This will give you a number. Double check it is the correct entry by typing BoxData(#)
+            E.g. BoxData(345)
+        If it is correct, replace the entry with an empty array by typing BoxData(#)= [ ] ;
+            E.g. BoxData(345) = [ ];
+            Note, the brackets in matlab will not have a space between them. I added it here because in this font you couldn’t tell they were brackets without the space
+        Save your changes by typing save('/Volumes/flyvisionbox/BoxData.mat','BoxData’)
+
+
+A note for “Connection refused” error
+
+    From time to time, the IP address of the computers change. This will affect the ./copy_apollo_experiments.sh and ./copy_orion_experiments.sh
+        The error when you try to run this script will say e.g. " ssh: connect to host 10.102.32.49 port 22: Connection refused"
+        As of now, the scripts say the Orion IP address is 10.102.32.52 and Apollo IP address is 10.102.32.50
+    To find the new IP address:
+        go to the computer and in windows click Start>run
+        When the new window opens, type cmd and click OK
+        when the new window pop up, type ipconfig and press enter
+    To change the script to have the correct IP address:
+        Make sure you are logged in as boxuser and in box/scripts (see instructions in Step 1 above)
+        on the command line, type sed -i ’s/oldIP/newIP/g’ FULLFileName
+            e.g.  sed -i 's/10.102.32.50/10.102.32.52/g' copy_orion_experiments.sh 
+            sed call the stream editor 
+            -i: realtime works with file
+            s: substitute
+            g: global (or it will only replace the first one it sees on a line)
+
+
+A Note for Changing Line Name of Effector Name of experiments
+
+    If the incorrect name is selected during the experiment, or if we change the name of a line at a later point, it is useful to know how to go into the box data and alter the information in the files
+    Navigate to the folder you wish to alter the name of
+        Type ssh boxuser@flyolympiad Password: b0xuser!
+        Type cd /groups/reiser/flyvisionbox/box_data/
+        Rename the file in boxdata by typing mv OldFullExperimentName NewFullExperimentName
+            Example mv GMR_SS02404_Kir21DL_Apollo_20160916T145007 GMR_SS02404_UAS_Shi_ts1_UAS_Kir21_Apollo_20160916T145007
+        Navigate into the folder to change internal folders and files
+            Type cd FULLExperimentName
+            Example cd GMR_SS02404_UAS_Shi_ts1_UAS_Kir21_Apollo_20160916T145007
+        Do a search and replace within all files to change the name. This may take a while. Be patient. When the command line returns, it is done. If it takes more than 10min, something went wrong.
+            Type grep -lr 'oldword' . | xargs sed -i 's/oldword/newword/g'
+            Examples
+                grep -lr 'DL_UAS_GAL80ts_Kir21_23_0010' . | xargs sed -i 's/DL_UAS_GAL80ts_Kir21_23_0010/UAS_Shi_ts1_UAS_Kir21/g’ 
+                grep -lr 'Kir21DL' . | xargs sed -i 's/Kir21DL/UAS_Shi_ts1_UAS_Kir21/g'
+                grep -lr 'su(HW)' . | xargs sed -i 's/su(HW)/su_Hw_/g'
+            grep: searches for text in files recursively in a directory.
+            The -l flag for grep tells it to only output file names when it finds a word match. (lowercase L)
+            The -r flag tells grep to search recursively in the directory, i.e. it will also look in subfolders if applicable.
+            The dot (.) tells grep to look in the current directory. You can change that to a directory path, a specific file, or an asterisk (*) if you want to search files in the current directory non-recursively.
+            The pipe (|) tells xargs to operate on the output of the grep command.
+            xargs tells sed to use the output of grep.
+            Sed calls the substitution editor
+            The i means “in place”, meaning the original file is modifed without ccreating a copy
+            s means substitute
+            g means  globally (otherwise it will just change the first instance on each line)
+        This previous command will change the name within files, but not file names or folder names themselves.
+            Open each folder of your experiment using the cd and ls commands. Any incorrectly named files or folders can be renamed with the mv command
+            There are typically FIVE folders that need to be renamed:
+                1)  ExperimentName.exp in main experiment folder
+                2) …Metadata.xml in main experiment folder
+                3) …RunData.mat in main experiment folder
+                4) sequencedetails....m in 01_5.34_34 folder
+                5) sequencedetails....m in 02_5.34_34 folder
+            Example of an experiment getting all folder/file names replaced
+                cd GMR_SS02404_UAS_Shi_ts1_UAS_Kir21_Apollo_20160916T145007
+                ls
+                mv  GMR_SS02404_Kir21DL_Apollo_20160916T145007.exp GMR_SS02404_UAS_Shi_ts1_UAS_Kir21_Apollo_20160916T145007.exp
+                mv  GMR_SS02404_Kir21DL_Apollo_Metadata.xml  GMR_SS02404_UAS_Shi_ts1_UAS_Kir21_Apollo_Metadata.xml
+                mv  GMR_SS02404_Kir21DL_Apollo_RunData.mat  GMR_SS02404_UAS_Shi_ts1_UAS_Kir21_Apollo_RunData.mat
+                cd 01_5.34_34
+                ls
+                mv sequence_details_GMR_SS02404_Kir21DL_Apollo.m sequence_details_GMR_SS02404_UAS_Shi_ts1_UAS_Kir21_Apollo.m
+                cd ..
+                cd 02_5.34_34/
+                mv sequence_details_GMR_SS02404_Kir21DL_Apollo.m sequence_details_GMR_SS02404_UAS_Shi_ts1_UAS_Kir21_Apollo.m
+                    Note that sometimes the time stamp is included in the "sequence details names", and sometimes not. Be sure to copy the name precisely
+
+
+A note for moving the entire project to a different disk location.
+
+    Update copy scripts
+        Open Terminal application (make sure you are either on Secure wifi or plugged in to the network through ethernet)
+            Type ssh boxuser@flyolympiad Password is: b0xuser!
+            Type cd box/scripts
+        Make backup copies of copy_apollo_experiments.sh and copy_orion_experiments.sh
+        Edit files
+            Type vim copy_apollo_experiments.sh or vim copy_orion_experiments.sh to edit the files
+            Replace old folder locations with new ones in the  3 lines after the "then".
+
+---------------------------------------------------------------------------------------------------------------------------------------------
+#!/bin/bash
+ssh_host="olympiad@10.102.32.52"
+for line in `ssh $ssh_host ls /cygdrive/e`
+    do
+        if ssh $ssh_host "ls /cygdrive/e/$line/*.exp 1> /dev/null 2>&1;"
+            then
+                scp -r $ssh_host:/cygdrive/e/$line /tier2/flyvisionbox/box_data/ && ssh $ssh_host rm -rf cygdrive/e/$line
+                chmod 755 $(find /tier2/flyvisionbox/box_data/$line -type d)
+                chmod 644 $(find /tier2/flyvisionbox/box_data/$line -type f)
+         fi
+done
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+    If permission is denied for executing the file, use chmodugo+x <script name>  (e.g. chmodugo+x copy_apollo_experiments.sh )
+    Update SBFMF conversion script
+
+
+--------------------------------------------------------------
+CM 20190719, 20190802 error
+
+Subscripted assignment between dissimilar structures.
+
+Error in box_analysis (line 95)
+    AD(i) = create_AD_struct(output_base_dir, sequence_count, protocol, per_temperature_folder_names{i}, action_sources(i)) ;
+
+Error in batch_analysis (line 152)
+            box_analysis(box_data_folder_path, ...
+
+CM 20190816 error during analysis of experiment on date 20190809. Analysis stopped in the middle - not sure how to proceed
+
+Error using plot
+Vectors must be the same length.
+
+Error in color_preference_with_repeats_analysis (line 265)
+        plot(t, ma(med_x_vel, ma_points), 'k')
+
+Error in prot_534_analysis (line 157)
+    color_preference_with_repeats_analysis;
+
+Error in box_analysis (line 141)
+        function_handle(experiment_folder_path, do_save_plots,
+        per_temperature_folder_names{k}, temperatures(k), k, AD(k), protocol,
+        analysis_version, ...
+
+Error in batch_analysis (line 152)
+            box_analysis(box_data_folder_path, ...
+
+_______________________________________________________________________________________________
+CM 20190913 - error during analysis. Same principle error seen for experiments on 20190809 and 20190816, just in a different spot. Also this error happened on Apollo instead of Orion
+row number in analysis.xls for folder \\dm11.hhmi.org\flyvisionbox\box_data\GMR_SS31193_trp_Apollo_20190913T133817\Output_1.1_1.7\01_5.34_34\01_5.34_34_seq2_tube3 is one short. We are missing one tracked frame (3124 instead of 3125)
+
+20190919 - copied the last row (3126) in analysis.xls and added the copy to the row right below it in order to bring the row count up one
+
+Error using plot
+Vectors must be the same length.
+
+Error in phototaxis_analysis (line 180)
+        plot(t, ma(med_x_vel, ma_points), 'k')
+
+Error in prot_534_analysis (line 136)
+    phototaxis_analysis;
+
+Error in box_analysis (line 141)
+        function_handle(experiment_folder_path, do_save_plots, per_temperature_folder_names{k}, temperatures(k), k, AD(k), protocol,
+        analysis_version, ...
+
+Error in batch_analysis (line 152)
+            box_analysis(box_data_folder_path, ...
+ 
+
+
+ssh RSA token?
+SHA256:wL1xPh2DMCWxNCg9OFuJyP0/t46kYbKHutjTdBqW5KM
+
+
+Git personal access token (use as password whenever cloning or pulling from github)
+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
