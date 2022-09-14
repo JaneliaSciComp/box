@@ -1,0 +1,28 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  store_tracking.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    
+# Required resources:
+#   Programs:     
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+# Check $grammar{exp_file};
+
+if [ ! -d "$grammar{top_load_dir}" ]
+then
+    mv "$grammar{fotrak_dir}"  "$grammar{top_load_dir}" 2>/dev/null;
+fi
+
+source /usr/local/matutil/mcr_select.sh 2013a
+
+# store the tracking data in SAGE
+"$grammar{pipeline_scripts_path}/TrackingLoader/build/distrib/store_tracking" "/groups/flyprojects/home/olympiad/config/SAGE-$grammar{sage_env}.config" "$grammar{top_load_dir}"
+
+# clean up
+source /usr/local/matutil/mcr_select.sh clean

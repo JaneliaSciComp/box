@@ -1,0 +1,53 @@
+
+
+%%%% Example paramter file for OlympiadTrak
+%%  Possible parameters are:
+%%     workDir      Specify a working directory if different then current one
+%%                  All input/output files are searched under this directory 
+%%     inputFile    Can handle either an avi file or a sequence of jpeg images
+%%                  For images we require the format e.g., JPG/image.%04d.jpg 
+%%                  For an avi file, just its name.
+%%                  This is relative to the workDir.
+%%     roiPath      The path to the ROI.txt file, if used
+%%     bgFile       Name of background image file - relative to workDir.
+%%     roiFile	    Name of ROI image file - relative to workDir.
+%%     outputDir    Output directory - relative to workDir
+%%     startFrame   Index of first frame to process 
+%%     endFrame     Index of last frame to process
+%%     genVideoOutput       A switch (0/1) for generating video output 
+%%     updateBg             A switch (0/1) for re-estimating the background image
+%%     updateRoi            If no ROI specified in the bmp file, then a value of 0 means the entire image is in the ROI, 1 means use ROI.txt
+%%     displayTracking      A switch (0/1) for on-line display of tracking
+%%     moveThresh           Threshold  for which translation in pixels 
+%%                          is considered as "moving".
+%%     frameRate            For a sequence of images we need the frame rate
+%%                          If the input is an avi the frame-rate is taken
+%%                          from it.
+%%     tubeToProcess        Which tubes are to be processed:
+%%                             all   =  all tubes will be processed
+%%                              0    =  all tubes will be processed
+%%                             index =  process tube number "index" 
+%%                                      counting is left-to-right
+%%                             -1    =  select manually
+%%                          to process multiple tubes use this entry
+%%                          several times
+%%
+%%
+%%  Rows which begin with % are ignored (comments)
+%%
+
+startFrame   1
+endFrame     -1
+bgFile       bg.bmp
+roiFile      roi.bmp
+bgThresh	40
+genVideoOutput    0
+updateBg         1
+updateRoi	0	
+displayTracking   0
+tubeToProcess     -1
+pixToMm      0.24
+frameRate   25
+moveThresh  1
+maxObjNum   15
+

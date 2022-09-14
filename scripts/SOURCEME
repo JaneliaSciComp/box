@@ -1,0 +1,33 @@
+export PATH="$PATH:/misc/sc/pipeline/bin"
+#DIR="/misc/local"
+printf "PATH: $PATH\n"
+#$DIR/dotter:\
+#$DIR/matlab/bin:\
+#$DIR/octave/bin:\
+#$DIR/ImageMagick/bin:\
+#$DIR/hmmer/bin:\
+#$DIR/blast/bin:\
+#$DIR/gnuplot/bin:\
+#$DIR/sc/pipeline/bin:\
+#$DIR/infernal/bin:\
+#$DIR/muscle:\
+#$DIR/mafft/bin:\
+#$DIR/MSPcrunch+Blixem:\
+#$DIR/tRNAscan-SE/bin:\
+#$DIR/qrna/bin:\
+#$DIR/squid/bin:\
+#$DIR/ViennaRNA/bin:\
+#$DIR/fasta/bin:\
+#$DIR/unafold/bin:\
+#$DIR/mfold/bin:\
+#$DIR/MultiRNAFold:\
+#$DIR/klusters/bin:\
+#$DIR/neuroscope/bin:\
+#$DIR/grace/bin:\
+#$DIR/dialign/src:\
+#$DIR/wublast:\
+#$DIR/cuda/bin:\
+#$DIR/RepeatMasker:\
+#$DIR/RepeatMasker/util:\
+#$DIR/Image-ExifTool\
+

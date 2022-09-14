@@ -1,0 +1,61 @@
+# ****************************************************************************
+# Resource name:  fotrak.gra      
+# Written by:     Lowell Umayam, Frank Midgley
+# Revision level: 2.0
+# Description:    This grammar parses the paths to directories containing 
+#                 all of the SBFMF files for a tube run at a temperature 
+#                 in an experiment.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+
+start: sourcedir
+{
+  use File::Basename;
+  use Cwd 'abs_path';
+
+  my %data = &assign(\%item);
+  
+  $data{pipeline_stage} = '01_sbfmf_compressed';
+  
+  # Load the module from a path relative to this grammar file.
+  $data{pipeline_scripts_path} = dirname(dirname(abs_path($main::Grammar_path)));
+  require $data{pipeline_scripts_path} . "/BoxPipeline.pm";
+  
+  BoxPipeline::add_settings_to_hash(\%data, $data{expdir}, $data{tempdir} . '-' . $data{tubedir}, "fotrak");
+  
+  # Base directories
+  $data{incoming_path} = $data{pipeline_root} . '/00_incoming';
+  $data{base_dir} = $data{pipeline_root} . '/' . $data{pipeline_stage};
+  $data{tracked_path} = $data{pipeline_root} . '/02_fotracked';
+  
+  $data{incoming_expdir_path} = $data{incoming_path} . '/' . $data{expdir};
+  $data{tracked_expdir_path} = $data{tracked_path} . '/' . $data{expdir};
+  
+  $data{tracked_tempdir_path} = $data{tracked_expdir_path} . '/' . $data{tempdir};
+  
+  $data{tracked_tubedir_path} = $data{tracked_tempdir_path} . '/' . $data{tubedir};
+  
+  $data{tracked_output} = $data{tracked_expdir_path} . '/' . $data{output_dir_name};
+  $data{tracked_output_tempdir} = $data{tracked_output} . '/' . $data{tempdir};
+  
+  $return = { $item[0] => $data{sourcedir}, %data };
+}
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+sourcedir: expdir '/' tempdir '/' tubedir
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+expdir: /[^\/]+/ | <error: illegal experiment directory>
+tempdir: /\d+\_\d+\.\d+\_\d+/ | <error: illegal temperature directory>
+tubedir: /\d+\_\d+\.\d+\_tube\d+\_sbfmf/ | <error: illegal tube directory>

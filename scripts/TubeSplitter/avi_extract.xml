@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<!-- Grammar file -->
+<grammar>avi_extract.gra</grammar>
+
+<!-- Command files to create -->
+<command_file type="grid script" in_name="avi_extract.bash_tmpl" out_name="$grammar{gridscript_path}" />
+
+<!-- Process flow -->
+
+<step>
+  <name>Exists</name>
+  <description>File exists</description>
+  <action>file_exists</action>
+  <file>$grammar{check_file}</file>
+  <pass>Found</pass>
+  <fail>Add_item</fail>
+</step>
+<step>
+  <name>Found</name>
+  <description>Found</description>
+  <action>bump_counter</action>
+  <counter>Exists</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Add_item</name>
+  <description>Append found item to mail message</description>
+  <action>mail_message</action>
+  <message>The avi file has been submitted for ROI splitting:</message>
+  <recipient>taylora@janelia.hhmi.org</recipient>
+  <pass>Grid</pass>
+</step>
+<step>
+  <name>Grid</name>
+  <description>Submit generated .bash script to grid</description>
+  <action>lsf</action>
+  <bsub_args>-J "$grammar{unique_id}" -n 1 </bsub_args>
+
+  <args>$grammar{grid_script}</args>
+  <stdout>$grammar{stdout_path}</stdout>
+  <stderr>$grammar{stderr_path}</stderr>
+  <pass>Good_submit</pass>
+  <fail>Bad_submit</fail>
+</step>
+<step>
+  <name>Good_submit</name>
+  <description>Bump "submit" counter</description>
+  <action>bump_counter</action>
+  <counter>Submissions</counter>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Bad_submit</name>
+  <action>mail_stack</action>
+  <recipient>taylora@janelia.hhmi.org</recipient>
+  <pass>Terminal</pass>
+</step>
+
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

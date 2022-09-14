@@ -1,0 +1,6 @@
+[submodule "tmt"]
+	path = tmt
+	url = https://github.com/JaneliaSciComp/tmt
+[submodule "tpt"]
+	path = tpt
+	url = https://github.com/JaneliaSciComp/tpt

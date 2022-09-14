@@ -1,0 +1,4 @@
+#!/bin/bash
+# Have to cd to $PWD to preserve behavior of native bsub, which does this
+echo ssh submit.int.janelia.org "cd $PWD ; bsub $@"
+ssh submit.int.janelia.org "cd $PWD ; bsub $@"

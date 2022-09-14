@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<!-- Grammar file -->
+<grammar>avi_sbfmf_conversion.gra</grammar>
+
+<!-- Command files to create -->
+<command_file type="bash script" in_name="avi_sbfmf_conversion.bash_tmpl" out_name="$grammar{gridscript_path}" />
+
+<!-- Process flow -->
+
+<step>
+  <name>Exists</name>
+  <description>File exists</description>
+  <action>file_exists</action>
+  <file>$grammar{compressed_sbfmf_path}</file>
+  <pass>Found</pass>
+  <fail>NotFound</fail>
+</step>
+
+<step>
+  <name>Found</name>
+  <description>Found</description>
+  <action>bump_counter</action>
+  <counter>Existing_sbfmf</counter>
+  <pass>Cleanup</pass>
+</step>
+
+<step>
+  <name>NotFound</name>
+  <description>NotFound</description>
+  <action>bump_counter</action>
+  <counter>Run_Convert</counter>
+  <pass>Add_item</pass>
+</step>
+
+<step>
+  <name>Add_item</name>
+  <description>Append found item to mail message</description>
+  <action>mail_message</action>
+  <message>The tube avi files in $grammar{compressed_sbfmf_path} have been submitted for sbfmf conversion:</message>
+  <recipient>taylora@janelia.hhmi.org</recipient>
+  <pass>RunSBConvert</pass>
+</step>
+
+<step>
+  <name>RunSBConvert</name>
+  <description>Execute generated .bash script</description>
+  <action>bash</action>
+  <args>$grammar{bash_script}</args>
+  <stdout>$grammar{stdout_path}</stdout>
+  <stderr>$grammar{stderr_path}</stderr>
+</step>
+
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

@@ -1,0 +1,159 @@
+-----------------
+The sbmovie suite
+-----------------
+
+The sbmovie suite includes scripts and a supporting library for working
+with sbfmf files, a movie format used by Mtrax, a multiple fly tracker.
+The sbmovie suite was adapted from code from Mtrax.
+
+
+Includes:
+- sbconvert: converts AVI to sbfmf
+- sbcompare: calculates conversion errors (mean square difference, etc)
+- sbinfo: for AVI, fmf, and sbfmf: outputs frame size and number of frames
+- sbview1 and sbview4: preview movies, and visualize differences and errors
+- sbmovielib: support routines for all scripts
+
+
+See also the LICENSE file in this directory.
+
+
+Although the terms of the software license give you the right to freely
+distribute the software (subject to the license terms), we ask that you
+instead refer interested people back to us while we are in the active
+development phase.
+
+
+-------
+WARNING
+-------
+
+This is prerelease software!  Its reliability and accuracy are untested, 
+its documentation is minimal, and support is not guaranteed.  Use at
+your own risk!
+
+
+-------
+License
+-------
+
+The sbmovie suite is licensed under the GPL.  It is derived from
+code from Mtrax, which is also GPL.  It includes the Pmw libraries,
+which are available under a liberal license.
+
+
+------------
+Installation
+------------
+
+This software should run on Mac, Linux, or Windows, if the prerequisates
+can be installed.  One library and a number of scripts are installed in
+the usual Python locations.
+
+
+Prerequisates:
+- Python 2.5
+- numpy
+- scipy
+- Tkinter
+- PIL
+- setuptools (ie, easy_install)
+
+Note that if you have Mtrax installed with Python 2.5, all of these 
+prerequisates should already be fulfilled.
+
+Once the prereqs are installed, you may install from an "egg" file or
+from a zipped or tar/gzipped archive.
+
+Installation using "easy_install" (recommended):
+- download ez_setup.py from http://peak.telecommunity.com/dist/ez_setup.py
+- run it using Python 2.5
+- as administrator: easy_install sbmoviesuite-0.x-py2.5.egg
+- easy_install *may* attempt to download and install prereqs you do not
+    have
+
+Installation from archive:
+- expand the archive
+- switch into directory
+- as administrator: python2.5 setup.py install
+
+
+---------
+Basic use
+---------
+
+Note: this is cut and paste from our wiki, which is why it's formatted
+as it is.  The advantage is that it will be easier for me to keep
+up-to-date until I generate better docs for a "finished" product.
+
+
+*sbconvert*
+* converts AVI files to sbfmf format
+* it's a command line tool
+* uses smart defaults; if you don't provide any options, should do something reasonable
+* parameter files can override defaults
+* log file tells you everything that happened (eg, # foreground pixels on each frame)
+* summary file tells you conversion errors for each converted file
+* usage:
+** "sbconvert -h" for a list of basic options
+** "sbconvert -w" writes out a default parameter file "sbparam.txt" to current directory
+** "sbconvert -p parameterfile" takes parameters from a file instead of internal defaults
+** "sbconvert" without arguments:
+*** takes parameters from "sbparam.txt" in same directory if present, internal defaults if not
+*** searches for all .avi files in the current directory that have no correponsing .sbfmf file and converts them all
+** "sbconvert file1 file2 ..."
+*** as without parameters, except only the avi files in the provided list of files will be considered for conversion
+** all modes:
+*** prints concise status to the screen as it runs
+*** appends a moderatly verbose log to "sbconvert.log", creating the file if not present
+*** appends a single line with filename, date/time, and errors to "sbconvert.summary", creating the file if not present 
+* v0.5
+** added option to calculate background based on a sequence of movies while doing conversion segment by segment (usually movies are segments of a longer original movie, and calculating background based on all pieces ought to be better than piece-by-piece)
+*** off by default; create and edit a parameter file to use
+*** running sbconvert in sequence mode will cause a warning to be printed to the screen ("could save faster if <type 'numpy.ndarray'> ..."); you may ignore it; it comes from an Mtrax file that I have chosen not to edit
+*** the sequence pattern should look like "seq#.avi"; the '#' is the place where the sequence index is; anything can precede this suffix in the filename, so long as it's consistent within the sequence (the program will keep multiple sequences separate, as long as the front part of the filenames differ)
+** now reports number of frames to summary file, for greater ease in averaging errors across segments
+
+*sbcompare*
+* command-line tool
+* compares two movie files (avi, fmf, or sbfmf); calculates mean squared error between them
+* uses same error metric as sbconvert
+* usage: sbcompare file1 file2
+* v 0.5
+** now also compares sequences
+*** use the -s option
+*** use file patterns like "testmovie-seq#.avi"
+**** '#' will be replaced by '*' (so technically it'll accept more than just an index number there)
+**** you need the whole name for his, not just a suffix (as in the conversion step)
+
+*sbinfo*
+* v0.5 and later
+* command-line tool
+* given avi, fmf, or sbfmf files as input, spits out size and number of frames in movie
+
+*sbview1 and sbview4*
+* GUI applications (no command line options)
+* both let you examine movies frame-by-frame (but don't actually "play" movies)
+* sbview1 previews single movie files (avi, fmf, sbfmf)
+* sbview4 compares avi and sbfmf movies
+** if you open an avi, it opens corresponding sbfmf and vice versa
+** upper left: avi; upper right: sbfmf
+** lower left: squared error; lower right: frame-variable pixels in sbfmf 
+*** v0.5.4: lower right has sbfmf background image with foreground pixels superimposed in yellow
+
+
+-------
+Contact
+-------
+
+The sbmovie suite was developed by Donald J. Olbris at the Janelia
+Farm Research Campus of the Howard Hughes Medical Institute.
+
+
+If you're at Janelia Farm, check the wiki for more information!
+
+
+Don Olbris (olbrisd@janelia.hhmi.org)
+
+
+

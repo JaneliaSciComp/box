@@ -1,0 +1,21 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  merge_fotrak.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    Script to ...
+# Required resources:
+#   Programs:     
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+
+# Merge the tracking results
+source /usr/local/matutil/mcr_select.sh 2013a
+
+"$grammar{pipeline_scripts_path}/MergeTracking/build/distrib/merge_analysis_output" "$grammar{fotrak_dir}" "$grammar{output_dir_name}"
+
+# Clean up
+source /usr/local/matutil/mcr_select.sh clean

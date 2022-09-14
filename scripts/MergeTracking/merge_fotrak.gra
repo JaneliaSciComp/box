@@ -1,0 +1,74 @@
+# ****************************************************************************
+# Resource name:  flyolympiadctrax.gra      
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    This grammar will parse the qualified sbfmf video files
+#                 for the Fly Olympiad and allow the generation of ctrax data.
+#                 
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+
+start: pathname
+{
+  use File::Basename;
+  use Cwd 'abs_path';
+
+  my %data = &assign(\%item);
+  
+  $data{pipeline_stage} = '02_fotracked';
+  
+  # Load the module from a path relative to this grammar file.
+  $data{pipeline_scripts_path} = abs_path(dirname(dirname($main::Grammar_path)));
+  require $data{pipeline_scripts_path} . "/BoxPipeline.pm";
+  
+  BoxPipeline::add_settings_to_hash(\%data, $data{topdir}, "", "mergefotrak");
+  
+  # Base directories
+  
+  $data{base_dir} = $data{pipeline_root} . '/' . $data{pipeline_stage};
+  $data{fotrak_dir} = $data{base_dir} . '/' . $data{topdir};
+  $data{fotrak_output_path} = $data{base_dir} . '/' . $data{topdir} . '/' . $data{output_dir_name};
+  
+  opendir(OUTPUT,$data{fotrak_output_path});
+  $data{existing_merge} = 'null';
+  while (my $filename = readdir(OUTPUT)) {
+  	if ($filename =~ /^success/) {
+	     $data{existing_merge} = $filename;
+	}
+  }  
+  closedir(OUTPUT);
+  
+  $data{fotrak_check_path} = $data{fotrak_output_path} . '/' . $data{existing_merge};
+  
+  $return = { $item[0] => $data{pathname}, %data };
+}
+
+pathname: sourcedir '/' filename
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',$data{sourcedir},$data{filename}), %data };
+}
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+filename: output
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+sourcedir: topdir  
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+topdir: /[^\/]+/ | <error: illegal top level directory>
+output: /Output/ | <error: illegal Output>

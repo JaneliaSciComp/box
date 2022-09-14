@@ -1,0 +1,9 @@
+Warning: Duplicate directory name: /usr/local/matlab-2008b/toolbox/local. 
+sh: ifconfig: command not found
+mcc -o 'merge_analysis_output' -W 'main' -d '/groups/flyprojects/home/olympiad/FO_Trak/merge_analysis_output/src' -T 'link:exe' -R -nojvm -N '/groups/flyprojects/home/olympiad/FO_Trak/merge_analysis_output.m' -a '/groups/flyprojects/home/olympiad/FO_Trak/Olympiad_folder_check.m' 
+Warning: Name is nonexistent or not a directory:
+/usr/local/matlab-2008b/toolbox/compiler/patch. 
+Warning: Name is nonexistent or not a directory:
+/usr/local/matlab-2008b/toolbox/compiler/patch. 
+Warning: Name is nonexistent or not a directory:
+/usr/local/matlab-2008b/toolbox/compiler/patch. 

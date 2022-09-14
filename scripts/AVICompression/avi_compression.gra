@@ -1,0 +1,62 @@
+# ****************************************************************************
+# Resource name:  flyolympiad_box_avi_compression.gra      
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    This grammar will parse...
+#                 
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+
+start: pathname
+{
+  use File::Basename;
+  use Cwd 'abs_path';
+  
+  my %data = &assign(\%item);
+  
+  # Load the module from a path relative to this grammar file.
+  $data{pipeline_scripts_path} = abs_path(dirname(dirname($main::Grammar_path)));
+  require $data{pipeline_scripts_path} . "/BoxPipeline.pm";
+   
+  $data{pipeline_stage} = '05_analyzed';
+ 
+  BoxPipeline::add_settings_to_hash(\%data, $data{topdir}, "", "avi-compression");
+  
+  # Base directories
+
+  $data{base_dir} = $data{pipeline_root} . '/' . $data{pipeline_stage};
+  $data{load_dir} = $data{base_dir} . '/' . $data{topdir};
+  $data{output_dir} = $data{load_dir} . '/' . $data{output_dir_name};
+  $data{comp_sum_file} = $data{output_dir} . '/comparison_summary.pdf';
+
+  $data{compressed_dir} = $data{pipeline_root} . '/06_avi_compressed';
+  $data{top_compressed_dir} = $data{compressed_dir} . '/' . $data{topdir};
+  $data{quarantine_dir} = $data{pipeline_root} . '/06_quarantine_not_compressed';
+  $data{top_quarantine_dir} = $data{quarantine_dir} . '/' . $data{topdir};
+  
+  $return = { $item[0] => $data{pathname}, %data };
+}
+
+pathname: sourcedir
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{sourcedir}, %data };
+}
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+sourcedir: topdir
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals GMR_21C09_AE_01_shi_Athena_20100225T123944/Output
+# ****************************************************************************
+topdir: /[^\/]+/ | <error: illegal top level directory>

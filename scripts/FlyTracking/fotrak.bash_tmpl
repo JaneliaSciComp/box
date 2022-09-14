@@ -1,0 +1,42 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  fotrak.bash_tmpl
+# Written by:     Lowell Umayam, Frank Midgley
+# Revision level: 2.0
+# Description:    Script to run fo_trak on sbfmf files.
+# Required resources:
+#   Programs:     fo_trak
+# ****************************************************************************
+
+
+# This is a bit of a hack.  The sbconvert stage has to leave a duplicate sym. link in 00_incoming and 01_sbfmf_compressed because it uses
+# the "bash" pipeline command in its XML instead of "grid".  Since the "bash" is executed immediately and the sbconvert bash template moves
+# the sym. link all but the first file processed fail because the sym-linked path to the bash file no longer resolves.  So the bash template
+# copies the sym. link instead of moving it.  Once we reach this point we know it's safe to remove the original link.
+if [ -h "$grammar{incoming_expdir_path}" ]
+then
+    rm "$grammar{incoming_expdir_path}" 2>/dev/null
+fi
+
+# Move the one remaining sym. link to the next stage.
+if [ ! -d "$grammar{tracked_expdir_path}" ]
+then
+    cd "$grammar{base_dir}"
+    mv "$grammar{expdir}" "$grammar{tracked_path}" 2>/dev/null
+fi
+
+# Create the output dirs if they don't exist.
+if [ ! -d "$grammar{tracked_output}" ]
+then
+    mkdir -p "$grammar{tracked_output}"
+    chmod 775 "$grammar{tracked_output}"
+fi
+if [ ! -d "$grammar{tracked_output_tempdir}" ]
+then
+    mkdir -p "$grammar{tracked_output_tempdir}"
+    chmod 775 "$grammar{tracked_output_tempdir}"
+fi
+
+# Run the MATLAB fly tracking code on all of the tube's SBFMF files.
+ulimit -v 15000000 # Don't use more than 15 GB.
+"$grammar{pipeline_scripts_path}/FlyTracking/fotrak_tube.sh" "$grammar{tracked_tubedir_path}" "$grammar{tracked_output_tempdir}"

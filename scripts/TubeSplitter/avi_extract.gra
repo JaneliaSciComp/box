@@ -1,0 +1,70 @@
+# ****************************************************************************
+# Resource name:  flyolympiadtube_avi_extract.gra      
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    This grammar will generate ROI (region of interest) avi files
+#                 for each tube in the sequence movie for Fly Olympiad.
+#                 
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+
+start: pathname
+{
+  use File::Basename;
+  use Cwd 'abs_path';
+
+  my %data = &assign(\%item);
+  
+  # Load the module from a path relative to this grammar file.
+  $data{pipeline_scripts_path} = abs_path(dirname(dirname($main::Grammar_path)));
+  require $data{pipeline_scripts_path} . "/BoxPipeline.pm";
+  
+  $data{pipeline_stage} = '00_incoming';
+
+  BoxPipeline::add_settings_to_hash(\%data, $data{topdir}, $data{expdir} . '-' . $data{clipname}, "avisplit");
+  
+  # Base directories
+  $data{base_dir} = $data{pipeline_root} . '/' . $data{pipeline_stage};
+  
+  $data{avi_dir_path} = $data{base_dir} . '/' . $data{topdir} . '/' . $data{expdir};
+  $data{avi_roi_path} = $data{base_dir} . '/' . $data{topdir} . '/' . 'ROI.txt';
+  $data{avi_file_path} = $data{avi_dir_path} . '/' . $data{filename};
+  $data{check_file} = $data{avi_dir_path} . '/' . $data{clipname} . '_tube6.avi';
+
+  $data{grep_tubes} = $data{clipname} . '_tube[0-9].avi$';
+  $data{count_tubes} = $data{clipname} . '_tube*.avi';
+    
+  $return = { $item[0] => $data{pathname}, %data };
+}
+
+pathname: sourcedir '/' filename
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',$data{sourcedir},$data{filename}), %data };
+}
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+filename: clipname '' extension
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+sourcedir: topdir '/' expdir 
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+topdir: /[^\/]+/ | <error: illegal top level directory>
+expdir: /\d+\_\d+\.\d+\_\d+/ | <error: illegal experiment dir>
+clipname: /\d+\_\d+\.\d+\_seq\d+/ | <error: illegal clipname here>
+extension: '.avi' | <error: illegal extension>

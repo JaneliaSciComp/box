@@ -1,0 +1,7 @@
+field,min,max
+mean errror,0.000000,19.455057
+max error,0.000000,21371.250893
+mean window error,0.000000,638.639519
+max window error,0.000000,1156.435968
+compression rate,0.151710,0.386459
+nframes,3001.000000,6126.000000

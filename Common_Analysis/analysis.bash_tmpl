@@ -1,0 +1,55 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flyolympiad_box_analysis.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2010-2-08
+# Description:    Script to run analysis on Fly Olympiad experiment
+# Required resources:
+#   Programs:     analyze experiment
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+# 
+
+# The current working directory should be the pipeline Analysis directory.
+
+if [ ! -f "$grammar{analysis_loader_dir}/load_analysis.py" ]
+then
+	echo "Could not find load_analysis.py in the AnalysisLoader directory.  ($grammar{output_dir_name})" >&2
+	exit 1
+fi
+
+if [ ! -d "$grammar{top_analysis_dir}" ]
+then
+    # Move the experiment's sym. link to the next 0* folder.
+    mv "$grammar{load_dir}"  "$grammar{top_analysis_dir}" 2>/dev/null;
+fi
+
+# Run the analysis code.  (Used to be called the analysis "spider".)
+source /usr/local/matutil/mcr_select.sh 2013a
+"$grammar{pipeline_scripts_path}/Analysis/build/distrib/analyze_experiment" "$grammar{top_analysis_dir}" "$grammar{output_dir_name}" --reanalyze;
+
+# Create PNG versions of all of the PDFs.
+cd "$grammar{output_analysis_dir}";
+/usr/local/ImageMagick/bin/mogrify -density 100 -format png *.pdf;
+chmod g+w *.png;
+
+# Add a sym. link to the comparison summary to the short cut folder if it exists.
+if [ -d "$grammar{comparison_dir}" ]
+then
+    cd "$grammar{comparison_dir}";
+    ln -s "$grammar{box_data_comparison}" "$grammar{comparison_pdf_link}";
+fi
+
+if [ "$grammar{do_sage_load}" = true ]
+then
+    # Store the analysis data in SAGE, making sure to use our copy of sage.py.
+    export PYTHONPATH="$grammar{pipeline_scripts_path}":$PYTHONPATH
+    /usr/local/python-2.7.3/bin/python "$grammar{analysis_loader_dir}/load_analysis.py" "$grammar{top_analysis_dir}";
+fi
+
+# cleanup
+source /usr/local/matutil/mcr_select.sh clean

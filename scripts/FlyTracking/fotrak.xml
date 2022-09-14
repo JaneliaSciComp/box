@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<!-- Grammar file -->
+<grammar>fotrak.gra</grammar>
+
+<!-- Command files to create -->
+<command_file type="grid script" in_name="fotrak.bash_tmpl" out_name="$grammar{gridscript_path}" />
+
+<!-- Process flow -->
+
+<step>
+  <name>Add_item</name>
+  <description>Append found item to mail message</description>
+  <action>mail_message</action>
+  <message>Tube $grammar{tracked_tubedir_path} has been submitted for Fly Olympiad tracking:</message>
+  <recipient>weaverc10@janelia.hhmi.org</recipient>
+  <pass>Grid</pass>
+</step>
+
+<step>
+  <name>Grid</name>
+  <description>Submit generated .bash script to grid</description>
+  <action>lsf</action>
+  <bsub_args>-J $grammar{unique_id} -n 2 </bsub_args>
+  <args>$grammar{grid_script}</args>
+  <stdout>$grammar{stdout_path}</stdout>
+  <stderr>$grammar{stderr_path}</stderr>
+  <pass>Good_submit</pass>
+  <fail>Bad_submit</fail>
+</step>
+<step>
+  <name>Good_submit</name>
+  <description>Bump "submit" counter</description>
+  <action>bump_counter</action>
+  <counter>Submissions</counter>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Bad_submit</name>
+  <action>mail_stack</action>
+  <recipient>taylora@janelia.hhmi.org</recipient>
+  <pass>Terminal</pass>
+</step>
+
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

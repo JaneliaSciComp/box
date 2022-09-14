@@ -1,0 +1,87 @@
+# ****************************************************************************
+# Resource name:  flyolympiadsbconvert.gra      
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    This grammar will parse the qualified avi video files
+#                 for the Fly Olympiad for use for sbfmf file conversion
+#                 
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+
+start: pathname
+{
+  use File::Basename;
+  use Cwd 'abs_path';
+
+  my %data = &assign(\%item);
+  
+  $data{pipeline_stage} = '00_incoming';
+  
+  # Load the module from a path relative to this grammar file.
+  $data{pipeline_scripts_path} = dirname(dirname(abs_path($main::Grammar_path)));
+  require $data{pipeline_scripts_path} . "/BoxPipeline.pm";
+  
+  BoxPipeline::add_settings_to_hash(\%data, $data{topdir}, $data{clipname}, "sbconvert");
+  
+  # Base directories
+  my $BASE = $data{pipeline_root} . '/' . $data{pipeline_stage};  
+  $data{compressed_path} = $data{pipeline_root} . '/01_sbfmf_compressed';
+  $data{base_dir} = $BASE;
+  $data{sbfmf_filename} = $data{clipname} . '.sbfmf';
+
+  $data{topdirpath} = abs_path($BASE . "/" . $data{topdir});
+  $data{avidirpath} = $data{topdirpath} . '/' . $data{expdir};
+  $data{avifilepath} = $data{avidirpath} . '/' . $data{filename};
+
+  $data{clipname} =~ /(tube\d+)/;
+  
+  $data{tube} = $1;
+  
+  my $SBFMFDIR = $data{clipname};
+
+  $SBFMFDIR =~ s/\_seq\d+//;
+  
+  $data{compressed_dir} = $SBFMFDIR . "_sbfmf";
+
+  $data{sbfmf_path} = $data{avidirpath} . '/' . $data{compressed_dir};
+  
+  $data{compressed_topdir_path} = $data{compressed_path} . "/" . $data{topdir};  
+
+  $data{compressed_expdir_path} = $data{compressed_topdir_path} . '/' . $data{expdir};
+  
+  $data{compressed_sbfmf_path} = $data{compressed_expdir_path} . '/' . $data{compressed_dir};
+  
+  $return = { $item[0] => $data{pathname}, %data };
+}
+
+pathname: sourcedir '/' filename
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',$data{sourcedir},$data{filename}), %data };
+}
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+filename: clipname '' extension
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+sourcedir: topdir '/' expdir
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+topdir: /[^\/]+/ | <error: illegal top level directory>
+expdir: /\d+\_\d+\.\d+\_\d+/ | <error: illegal experiment dir>
+clipname: /\d+\_\d+\.\d+_seq\d+\_tube\d+/ | <error: illegal clipname>
+extension: '.avi' | <error: illegal extension>

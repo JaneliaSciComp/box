@@ -1,0 +1,118 @@
+
+
+# default parameter file for sbconvert.py
+
+# -- the '#' character introduces comments; blank lines are ignored
+# -- keywords and values are separated by any mix of tabs and spaces;
+#       you must not have tabs or spaces within a keyword
+# -- unknown keywords will cause errors when the file is read
+# -- if you repeat a keyword, the last value will be used
+# -- if you delete or omit a keyword, the default will be used
+# -- for on/off options, use: true, True, false, or False
+
+# ----- operations control
+# options for controlling what happens
+
+# convert = False means don't do the conversion at all;
+#   just calculate the background, write a bg file if 
+#   asked to, and end; useful when calculating a bg image
+#   to be used in converting many movies in parallel (eg,
+#   on a compute cluster)
+convert                     false
+
+# writefiles = false means do the conversion and calculate 
+#   the errors; but do not write out any converted movies;
+#   useful if you're repeating a single
+#   conversion multiple times with various paramters to 
+#   find the smallest error 
+writefiles                  true
+
+# set to true to force overwriting of existing files;
+#   includes both background files and converted movies 
+overwrite                   true
+
+
+# ----- background subtraction
+# use frames from all movies in similarly named sequence?
+# suffix is the end of the filename; '#' indicates where 
+#   the sequence index is in the name; filenames will be
+#   sorted numerically (not the same as alphabetically or 
+#   lexically!)
+# specify sequencesuffix of "none" to use all avi files in
+#   the directory in lexical order
+usesequence                 true
+sequencesuffix              none
+
+# if writebgfiles is true, a bg image file will be written for
+#   each sequence; useful if you need to calculate it once
+#   and use it many times; filename will be based on
+#   input file or sequence, will end in -bg.pickle
+writebgfiles                true
+
+# if readbgfiles is true, bg images will attempt to be read
+#   from disk; filename should match what writebgfiles will
+#   output, which isn't much help to you; all you need to do
+#   is not move or rename them
+# if bgfilename is "default", the program will look for the 
+#   filename that it would have written; if you specify a 
+#   name, it will be loaded for *all* conversions!
+# writebgfiles is ignored if readbgfiles is true
+readbgfiles                 false
+bgfilename                  default
+
+# the rest of the options for controlling the background 
+#   substitution process are not all explained here, but 
+#   they are the same as in the Mtrax system
+# n_bg_std_thresh_low         10
+# n_bg_std_thresh_high        20
+
+# should be this?
+n_bg_std_thresh_low         5
+n_bg_std_thresh_high        1
+# KB: this isn't good -- low should be <= high
+
+# allowed: median or mean
+est_algorithm               median
+
+# allowed: standarddeviation or other
+# KB: other? I don't think that is a choice
+normalize_by                standarddeviation
+
+# allowed: darkonlight, lightondark, other (other added by KB)
+# KB: switched this to other, otherwise we won't see light on dark
+# this is useful for compression, not tracking
+difference_mode             other
+
+# how many frames to sample
+bg_nframes                  100
+
+# threshold the standard deviation to be at least
+# bg_std_min, at most bg_std_max
+# Note from KB: I usually set the range to be much smaller,
+# max / min = 3. Might be okay, though. 
+bg_std_min                  1.
+bg_std_max                  10.
+
+
+# ----- logging
+# options for determining how much info is sent where
+
+# file that summary lines are appended to:
+summaryfile                 sbconvert.summary
+
+# file that full log is appended to (see below for wordiness):
+logfile                     sbconvert.log
+
+# logging levels; allowed = warning, info, info-plus, or debug
+#   (from least to most wordy)
+fileloglevel                info-plus
+screenloglevel              info
+
+# ----- diagnostics:
+# Added by KB
+
+# whether to compute the more involved diagnostics
+docomputediagnostics	    False
+
+# width and height of window for integrating errors in pixels
+diagnosticwindowsize 	    10

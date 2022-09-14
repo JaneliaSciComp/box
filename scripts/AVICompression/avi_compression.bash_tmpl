@@ -1,0 +1,37 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flyolympiad_box_avi_compression.bash_tmpl
+# Written by:     Frank Midgley
+# Revision level: 1.0
+# Date released:  2012-05-03
+# Description:    Script to run AVI compression on a Fly Olympiad box experiment
+# Required resources:
+#   Programs:     flyolympiad_box_avi_compress_experiment.sh
+#                 flyolympiad_box_avi_compress_movie.sh
+#                 flyolympiad_create_jira_ticket.pl
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+# 
+
+# Compress the AVI's in the experiment folder.
+# The current working directory should be the AVICompression directory.
+if [ ! -x ./avi_compress_experiment.sh ]
+then
+	echo "Could not find avi_compress_experiment.sh in the current directory.  ($PWD)" >&2
+	exit 1
+fi
+./avi_compress_experiment.sh "$grammar{load_dir}"
+
+# Route the experiment symbolic link to the appropriate folder.
+if [ $? -eq 0 ]
+then
+	# Success, move it along.
+	mv "$grammar{load_dir}" "$grammar{top_compressed_dir}" 2>/dev/null
+else
+	# Failure, move to quarantine.
+	# The compression script will have created a JIRA ticket.
+	mv "$grammar{load_dir}" "$grammar{top_quarantine_dir}" 2>/dev/null
+fi
