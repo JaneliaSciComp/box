@@ -130,7 +130,10 @@ def main() :
     if experiment_count == 0 :
         printfe('No experiments to track in %s.\n' % incoming_folder_path)
         return
-    printfe('There are %d experiments that will be tracked.\n' % experiment_count)
+    elif experiment_count == 1 :
+        printfe('There is 1 experiment that will be tracked.\n')
+    else :
+        printfe('There are %d experiments that will be tracked.\n' % experiment_count)
 
 
     # Each experiment consists of multiple 'protocols' (usually two, named 01_something and 02_something).
