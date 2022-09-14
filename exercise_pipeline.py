@@ -82,17 +82,17 @@ def main() :
     # # And now make a fresh 00_incoming folder
     # os.mkdir(incoming_folder_path)
 
-    # The gruff folder should contain a folder named "box_data", which
-    # should contain experiment folders.  We want to run the pipeline
-    # on all of these.
-    # We make this happen my making symlinks to each one in the 00_incoming folder
-    box_data_folder_path = os.path.join(gruff_folder_path, 'box_data')
-    name_from_experiment_index = os.listdir(box_data_folder_path)
-    path_from_experiment_index = [ os.path.join(box_data_folder_path, name) for name in name_from_experiment_index ]
-    experiment_count = len(name_from_experiment_index)
-    for experiment_index in range(experiment_count) :
-        experiment_folder_path = path_from_experiment_index[experiment_index]
-        run_subprocess(['ln', '-s', experiment_folder_path, incoming_folder_path])
+    # # The gruff folder should contain a folder named "box_data", which
+    # # should contain experiment folders.  We want to run the pipeline
+    # # on all of these.
+    # # We make this happen my making symlinks to each one in the 00_incoming folder
+    # box_data_folder_path = os.path.join(gruff_folder_path, 'box_data')
+    # name_from_experiment_index = os.listdir(box_data_folder_path)
+    # path_from_experiment_index = [ os.path.join(box_data_folder_path, name) for name in name_from_experiment_index ]
+    # experiment_count = len(name_from_experiment_index)
+    # for experiment_index in range(experiment_count) :
+    #     experiment_folder_path = path_from_experiment_index[experiment_index]
+    #     run_subprocess(['ln', '-s', experiment_folder_path, incoming_folder_path])
 
     # Each experiment consists of multiple 'protocols' (usually two, named 01_something and 02_something).
     # Within each protocol, there are several sequences, e.g. seq1, seq2, seq 8.
