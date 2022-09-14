@@ -51,13 +51,13 @@ def main() :
     this_folder_path = os.path.dirname(this_script_path)
     os.chdir(this_folder_path)
 
-    # Make a fresh copy of the flyvisionbox "GRuFf" folder
-    # This is the local version of /groups/reiser/flyvisionbox
-    read_only_gruff_folder_path = os.path.join(this_folder_path, 'flyvisionbox-data-test-2022-04-22-single-read-only')
-    gruff_folder_path = os.path.join(this_folder_path, 'flyvisionbox-data-test-2022-04-22-single')
-    if os.path.exists(gruff_folder_path) :
-        run_subprocess(['rm', '-rf', gruff_folder_path])
-    run_subprocess(['cp', '-R', '-T', read_only_gruff_folder_path, gruff_folder_path])
+    # # Make a fresh copy of the flyvisionbox "GRuFf" folder
+    # # This is the local version of /groups/reiser/flyvisionbox
+    # read_only_gruff_folder_path = os.path.join(this_folder_path, 'flyvisionbox-data-test-2022-04-22-single-read-only')
+    # if os.path.exists(gruff_folder_path) :
+    #     run_subprocess(['rm', '-rf', gruff_folder_path])
+    # run_subprocess(['cp', '-R', '-T', read_only_gruff_folder_path, gruff_folder_path])
+    gruff_folder_path = '/groups/reiser/flyvisionbox'
 
     # For historical reasons, the code uses 'checkpoint' folders with names like:
     #
@@ -73,14 +73,14 @@ def main() :
     #
     # We want to clear these out, or at least the ones that we will touch
     incoming_folder_path = os.path.join(this_folder_path, '00_incoming')
-    run_subprocess(['rm', '-rf', incoming_folder_path])
+    # run_subprocess(['rm', '-rf', incoming_folder_path])
     run_subprocess(['rm', '-rf', './00_quarantine_not_split'])
     run_subprocess(['rm', '-rf', './01_quarantine_not_compressed'])
     run_subprocess(['rm', '-rf', './01_sbfmf_compressed'])
     run_subprocess(['rm', '-rf', './02_fotracked'])
 
-    # And now make a fresh 00_incoming folder
-    os.mkdir(incoming_folder_path)
+    # # And now make a fresh 00_incoming folder
+    # os.mkdir(incoming_folder_path)
 
     # The gruff folder should contain a folder named "box_data", which
     # should contain experiment folders.  We want to run the pipeline
