@@ -8,7 +8,7 @@ from tpt.fuster import *
 
 
 
-def scrape_for_job_ids(raw_stdout) :
+def scrape_bsub_stdout_for_job_ids(raw_stdout) :
     stdout = raw_stdout.strip()   # There are leading newlines and other nonsense in the raw version
     raw_tokens = stdout.split()
     is_token_nonempty = [ len(str)>0 for str in raw_tokens ]
@@ -43,6 +43,34 @@ def scrape_for_job_ids(raw_stdout) :
         is_valid_from_job_index[job_index] = True
     result = ibb(job_id_from_job_index, is_valid_from_job_index)
     return result
+
+
+
+def scrape_bjobs_stdout_for_job_ids(stdout) :
+    line_from_line_index = stdout.splitlines()
+    line_count = len(line_from_line_index)
+    is_valid_from_line_index = [False] * line_count
+    job_id_from_line_index = [None] * line_count
+    for line_index in range(line_count) :
+        line = line_from_line_index[line_index]
+        token_from_token_index = line.strip().split()
+        token_count = len(token_from_token_index)
+        if token_count == 0 :
+            continue
+        first_token = token_from_token_index[0]
+        if first_token == 'JOBID' :
+            continue  # this is the header line
+        job_id_as_string = first_token
+        try :
+            job_id = int(job_id_as_string) 
+        except ValueError :
+            continue
+        # Stuff the job_id into the array, and not that it's valid
+        job_id_from_line_index[line_index] = job_id
+        is_valid_from_line_index[line_index] = True
+    result = ibb(job_id_from_line_index, is_valid_from_line_index)
+    return result
+
 
 
 def main() :
@@ -107,28 +135,28 @@ def main() :
     printe(stdout)
     printe('stderr:')
     printe(stderr)
-    job_ids = scrape_for_job_ids(stdout)
+    job_ids = scrape_bsub_stdout_for_job_ids(stdout)
     status_from_job_index = bwait(job_ids)
     printe('tube-splitter job statuses: ', status_from_job_index)
     did_all_jobs_work = all([status==+1 for status in status_from_job_index])
     if not did_all_jobs_work :
         raise RuntimeError('Some jobs failed in tube-splitting stage')
 
-    # The second pipeline stage is to convert each per-tueb .avi to a .sbfmf
+    # The second pipeline stage is to convert each per-tube .avi to a .sbfmf
+    # Annoyingly, this one doesn't spit out the job id's, so we have to do a bjobs
+    # before and one just after to get the job id list
     splitter_script_path = os.path.join(this_folder_path, 'scripts', 'SBFMFConversion', 'avi_sbfmf_conversion.sh')
-    (stdout, stderr) = run_subprocess_and_return_stdout_and_stderr([splitter_script_path])
-    printe('stdout:')
-    printe(stdout)
-    printe('stderr:')
-    printe(stderr)
-    job_ids = scrape_for_job_ids(stdout)
+    stdout = run_subprocess_and_return_stdout(['bjobs'])
+    job_ids_before = scrape_bjobs_stdout_for_job_ids(stdout)
+    run_subprocess([splitter_script_path])
+    stdout = run_subprocess_and_return_stdout(['bjobs'])
+    job_ids_after = scrape_bjobs_stdout_for_job_ids(stdout)
+    job_ids = listsetdiff(job_ids_after, job_ids_before)
     status_from_job_index = bwait(job_ids)
     printe('sbfmf-conversion job statuses: ', status_from_job_index)
     did_all_jobs_work = all([status==+1 for status in status_from_job_index])
     if not did_all_jobs_work :
         raise RuntimeError('Some jobs failed in sbfmf-conversion stage')
-
-
 
 
 
