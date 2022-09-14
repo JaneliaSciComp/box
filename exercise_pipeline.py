@@ -114,6 +114,22 @@ def main() :
     if not did_all_jobs_work :
         raise RuntimeError('Some jobs failed in tube-splitting stage')
 
+    # The second pipeline stage is to convert each per-tueb .avi to a .sbfmf
+    splitter_script_path = os.path.join(this_folder_path, 'scripts', 'SBFMFConversion', 'avi_sbfmf_conversion.sh')
+    (stdout, stderr) = run_subprocess_and_return_stdout_and_stderr([splitter_script_path])
+    printe('stdout:')
+    printe(stdout)
+    printe('stderr:')
+    printe(stderr)
+    job_ids = scrape_for_job_ids(stdout)
+    status_from_job_index = bwait(job_ids)
+    printe('sbfmf-conversion job statuses: ', status_from_job_index)
+    did_all_jobs_work = all([status==+1 for status in status_from_job_index])
+    if not did_all_jobs_work :
+        raise RuntimeError('Some jobs failed in sbfmf-conversion stage')
+
+
+
 
 
 # If called from command line, run main()
