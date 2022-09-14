@@ -175,6 +175,10 @@ def main() :
     if not did_all_jobs_work :
         raise RuntimeError('Some jobs failed in fly-tracking stage')
 
+    # Declare victory
+    printfe("Pipeline finished successfully.\n")
+
+    
 
 # If called from command line, run main()
 if __name__ == "__main__":
