@@ -33,10 +33,10 @@ if ( $options->{'H'} || $options->{'-help'} || $options->{'help'}) {
 }
 
 # Sort out where various folders, files of interest are
-my $sbmoviesuite_folder_path = dirname(__FILE__)
-my $box_root_folder_path = dirname($sbmoviesuite_folder_path)
-my $sce_root_folder_path = "$box_root_folder_path/local/SCE"  # used to be /misc/local/SCE
-my $cots_folder_path = "$sce_root_folder_path/SCE/build/COTS"
+my $sbmoviesuite_folder_path = dirname(__FILE__);
+my $box_root_folder_path = dirname($sbmoviesuite_folder_path);
+my $sce_root_folder_path = "$box_root_folder_path/local/SCE";  # used to be /misc/local/SCE
+my $cots_folder_path = "$sce_root_folder_path/SCE/build/COTS";
 #my $python2_interpreter_path = "$box_root_folder_path/local/old_software/python-2.7.11/bin/python"  # used to me /misc/local/old_software/python-2.7.11/bin/python
 
 my $calcbg_param_file = "$sbmoviesuite_folder_path/sbparam-calcbg.txt";
