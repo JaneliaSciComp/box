@@ -1,0 +1,203 @@
+// ***************************************************************************
+// Resource name:  zlatic_secondary_image.imj_tmpl
+// Written by:     Lowell Umayam
+// Revision level: 0.1
+// Date released:  2010-01-24
+// Description:    After processing, this ImageJ macro template template
+//                 implements the image processing flow for the Zlatic Lab's
+//                 Larval Olympiad images.
+// Parameters:     NONE
+// ***************************************************************************
+
+// $grammar{lsm_file}
+requires("1.38x");
+
+var method="[Maximum Intensity]";
+var rmethod="[Brightest Point]";
+var useBioFormats=0;
+var base='$grammar{lsm_file} Channel : ';
+var single = 0;
+print("Sequence start for $grammar{lsm_file}");
+LOAD_STACK();
+MERGE_IMAGES();
+createProjections();
+TERMINATE_MACRO();
+
+
+function MERGE_IMAGES() {
+  print("Merging " + nImages() + " images");
+  if ((nImages() == 2) || (nImages() == 3))  {
+    Found=0;
+
+    if ($grammar{detect_chan} == 1) {
+        print("Found matching channel layout");
+        if (useBioFormats == 1) {
+         RED = base + 'C=1';
+         GREEN = base + 'C=0';
+         BLUE = base + 'C=1';        
+        } else {
+         RED = base + '$grammar{lsm_red_chan}';
+         GREEN = base + '$grammar{lsm_green_chan}';
+         BLUE = base + '$grammar{lsm_blue_chan}';
+        }
+
+        selectWindow(GREEN);
+
+	//ImgCount=1;
+ 	//while (nImages()>=ImgCount) {
+	//  selectImage(ImgCount);
+	//  if (getTitle() == GREEN) {
+
+        print(" Title: "+getTitle());
+	run("Brightness/Contrast...");
+	setMinAndMax(0, 80);
+        run("Apply LUT", "stack");
+
+	  //}
+	  //ImgCount++;
+	//}
+
+	run("RGB Merge...","red=[" + RED + "] " + "green=[" + GREEN
+            + "] blue=[" + BLUE + "]");
+
+    } else {
+      print("Title: "+getTitle());
+      exit("Image must be 2- or 3-channel (found " + nImages() + ")");
+    }
+
+  }
+
+}
+
+function createProjections() {
+  print("Generating projections");
+  // Reference+pattern total projection
+  print("  Creating total projection (reference+pattern)");
+  zProject();
+  saveAs("Jpeg","$grammar{projection_dir}/$grammar{short_file}" + "_total.jpg");
+  close();
+  print("  Total projection complete");
+
+  // Reference+pattern substacks
+  //print("  Creating substack projections (reference+pattern)");
+  //subStack=2;
+  //orgNum=nSlices;
+  //slNum=nSlices;
+  //while (slNum>=subStack) {
+  //  slNum=slNum-subStack;
+  //}
+  //addNum=subStack-slNum;
+  //if (slNum>0) {
+  //  for (t=1; t<=addNum; t++)  {
+  //    setSlice(nSlices);
+  //    run("Add Slice");
+  //    run("Subtract...", "slice value=255");
+  //  }
+  //}
+  //run("Grouped ZProjector", "group="+subStack+" projection=[Max Intensity]");
+  //filepath = "$grammar{projection_dir}/$grammar{short_file}" + "_01.jpg";
+  //run("Image Sequence... ", "format=Jpeg name=[$grammar{short_file}"
+  //    + "_] start=1 digits=2 save=[" + filepath + "]");
+  //close();
+  //print("  Substack projections complete");
+
+  if (single == 1) {
+    return;
+  }
+
+  print("Title: "+getTitle());
+  // Single channel projections
+  print("  Splitting RGB");
+  run("RGB Split");
+  print("After: "+getTitle());
+  print("  Split complete");
+  // Reference total projection
+  print("  Creating total projection (ref only)");
+
+  //selectWindow("RGB (blue)");
+  //close();
+
+  // Clear memory
+  clearMemory();
+  selectWindow("RGB (red)");
+  run("RGB Merge...","red = [RGB (red)] green=*None* ] "
+      + "blue = [RGB (red)]");
+  zProject();
+  saveAs("Jpeg", "$grammar{projection_dir}/$grammar{short_file}"
+         + "_ch1_ref.jpg");
+  close();
+
+  selectWindow("RGB (blue)");
+  close();
+
+  // Clear memory
+  clearMemory();
+  print("  Creating total projection (pattern only)");
+  // Pattern total projection
+  run("RGB Merge...","red=*None* green=[RGB (green)] "
+      + "blue=*None*");
+  zProject();
+  saveAs("Jpeg", "$grammar{projection_dir}/$grammar{short_file}"
+         + "_ch2_pat.jpg");
+  close();
+  print("  Total projection complete");
+
+  // Pattern substacks
+  //print("  Creating substack projections (pattern only)");
+  //run("Grouped ZProjector","group=" + subStack + " projection=[Max Intensity]");
+  //filepath = "$grammar{projection_dir}/$grammar{short_file}" + "_ch2_01.jpg";
+  //run("Image Sequence... ", "format=Jpeg name=[$grammar{short_file}"
+  //    + "_ch2_] start=1 digits=2 save=[" + filepath + "]");
+  //close();
+  //print("  Substack projections complete");
+  print("Projections generated");
+}
+
+function zProject() {
+  if (nSlices == 1) {
+    return;
+  }
+  run("RGB Zprojector","red=" + method + " green=" + method
+      + " blue=" + method + " power=2");
+  if (method == "[Average Intensity]") {
+    run("Sharpen");
+    run("Enhance Contrast", "saturated=0.5");
+  }
+}
+
+function clearMemory() {
+  d=call("ij.IJ.maxMemory");
+  e=call("ij.IJ.currentMemory");
+  for (trials=0; trials<3; trials++) {
+    call("java.lang.System.gc");
+    wait(100);
+  }
+}
+
+function LOAD_STACK() {
+  print("Opening $grammar{lsm_dir}/$grammar{lsm_file} with LSM Reader");
+  run("LSM Reader","open=$grammar{lsm_dir}/$grammar{lsm_file}");
+  if (nImages() == 0) {
+    print("Opening $grammar{lsm_dir}/$grammar{lsm_file} with "
+          + "Bio-Formats Importer");
+    run("Bio-Formats Importer","open=$grammar{lsm_dir}/$grammar{lsm_file} "
+        + "view=[Standard ImageJ] stack=Default split_channels");
+    // The base changes for files opened with the Bio-Formats Importer!
+    base='$grammar{lsm_file} - ';
+    useBioFormats = 1;
+    if (nImages() == 0) {
+      exit("Could not open with Bio-Formats Importer");
+    }
+  }
+  print("Image opened");
+}
+
+function TERMINATE_MACRO() {
+  while (nImages()>0) {
+    selectImage(nImages());
+    run("Close");
+  }
+  print("Sequence stop");
+  run("Quit","");
+  exit();
+}

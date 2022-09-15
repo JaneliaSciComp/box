@@ -1,0 +1,38 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flybowlregister.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2011-02-07
+# Description:    Script to run register script on Fly Bowl experiments
+# Required resources:
+#   Programs:     ctrax
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+#echo $grammar{checkfile}
+#echo $grammar{tracked_path}
+#echo $grammar{reg_dir_path}
+
+if [ ! -d "$grammar{reg_dir_path}" ]
+then
+     mv "$grammar{tracked_path}" "$grammar{reg_dir_path}"
+     echo "moving $grammar{tracked_path} to $grammar{reg_dir_path}"
+fi
+
+source ~/.bashrc;
+
+export MCR_CACHE_ROOT=/scratch/olympiad/mcr_cache_root_olympiad.$JOB_ID;
+mkdir -p $MCR_CACHE_ROOT;
+
+#$grammar{run_path}/register_cmd.sh $grammar{reg_dir_path}
+
+$grammar{run_path}/run_FlyBowlRegisterTrx.sh /groups/branson/bransonlab/projects/olympiad/MCR/v717 $grammar{reg_dir_path} analysis_protocol $grammar{analysis_protocol}
+
+/groups/flyprojects/home/olympiad/bowl_bin/flybowl_inline_dataloader.pl $grammar{reg_dir_path} registrationdata.txt
+
+rm -rf $MCR_CACHE_ROOT;
+cd /groups/flyprojects/home/olympiad/bowl_pipeline/
+trap "rm -f $0" 0

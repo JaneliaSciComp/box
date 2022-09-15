@@ -1,0 +1,93 @@
+# ****************************************************************************
+# Resource name:  zlatic_medial.gra          
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2011-01-12
+# Description:    This grammar will parse the qualified stack names
+#                 for the Zlatic Lab's medial images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: path
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Outliers for the Truman naming scheme
+  $data{animal} =~ s/^_//;
+  # Try to figure out the date
+  $data{date} = join('-','20'.substr($data{cdate},4,2),
+                     substr($data{cdate},0,2),substr($data{cdate},2,2));
+  # Base directories
+  my $BASE = '/groups/zlatic/zlaticimg/' . $data{type_dir};
+  $data{img_application} = 'zlatic-image';
+  $data{line} = $data{transformantid};
+  $data{source_dir} = join('/',$BASE,@data{qw(plate line secdata_name)});
+  $data{projection_loc} = join('/',@data{qw(plate line)},
+                               $data{secdata_name});
+  $data{projection_dir} = $data{source_dir};
+  $data{source_file} = $data{file};
+  $data{sage_image} = join('/',@data{qw(plate transformantid secdata_name
+                                        source_file)});
+  $data{designator} = $data{family} = 'zlatic_medial';
+  # Projections
+  $data{projection_all_file} = $data{rubin_stack} . '-composite-projection.jpg';
+  $data{projection_pattern_file} = $data{rubin_stack} . '-green-projection.jpg';
+
+  # Secondary data directories
+  $data{secdata_store} = join(',',qw(projection_all projection_pattern));
+  $data{substack_store} = join(',',qw(substack_all substack_pattern));
+  $return = { $item[0] => join('/',@data{qw(plate line secdata_name file)}), %data };
+} | <error>
+
+path: type_dir '/' plate '/' transformantid '/' secdata_name '/' file
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',@data{qw(type_dir plate transformantid
+                                            file)}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $data{stack} = $data{rubin_stack};
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error>
+
+stack: rubin_stack
+{
+  my %data = &assign(\%item);
+  $return = { %data };
+} | <error>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+rubin_stack: labid  '_' plate '' well '_' vector '_' landing_site '_' cdate '' animal
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('',@item[1..$#item]), %data };
+} | <error>
+
+transformantid: labid '_' plate '' well '_' vector '_' landing_site
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('',@item[1..$#item]), %data };
+} | <error: illegal transformant ID>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+cdate: /[0-9]{6}/ | <error: illegal date>
+animal: /(_?[A-Z])?/ | <error: illegal animal>
+labid: 'GMR' | 'GL' | <error: illegal lab ID>
+plate: /[1-9][0-9]{0,2}/ | <error: illegal plate>
+well: /[A-H](?:0[1-9]|1[012])/ | <error: illegal well>
+vector: /[A-Z]{2}/ | <error: illegal vector>
+landing_site: /\d{2}/ | <error: illegal landing site>
+file_type: /(All|Tile)/ | <error: illegal file type>
+type_dir: /lines\d?/ | <error: illegal type directory name>
+secdata_name: /sec_data_[0-9_]*/ | <error: illegal secdata directory>
+extension: 'tif' | <error: illegal stack file extension>

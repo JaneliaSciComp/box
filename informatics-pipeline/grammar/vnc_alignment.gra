@@ -1,0 +1,198 @@
+# ****************************************************************************
+# Resource name:  vnc_alignment.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2013-
+# Description:    This grammar will parse generic stack names for
+#                 VNC alignment.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: date '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+
+  # Some aliases to match other labs
+  my @namedata = split(/\_/, $data{lsmname});
+  $data{transformantid} = $data{lsmname};
+
+  my $start = join('/',$data{date},$data{file});
+  my $command = 'mysql -h mysql3 -u sageRead -psageRead sage '
+                . '--skip_column_names --exec="SELECT '
+                . "family,line,path FROM image_vw WHERE name='$start"
+                . "';" . '"';
+  my $result = `$command`;
+  $data{command1} = $command;
+  $result =~ s/\.bz2//;
+  $data{result1} = $result;
+  ($data{designator},$data{line},$data{path}) = split(/\s+/,$result);
+
+  # Base directories
+  (my $BASE = $data{path}) =~ s/\/confocalStacks\/$start$//;
+  my $OUTBASE = '/groups/sciserv/flyolympiad/vnc_align';
+  $data{img_application} = 'rubin-image';
+  my $ORGANIZED = join '/',$BASE,'organizedData';
+  my $SECONDARY = join '/',$BASE,'SecData';
+  # Use the following line to write to an alternate location
+  # $SECONDARY = join '/',$OUTBASE,'SecData',$data{designator};
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $BASE . '/confocalStacks/' . $data{date};
+  #$data{lsm_link} = "$ORGANIZED/confocalStacks/" . $LINK_SUFFIX;
+  $data{lsm_file} = $data{source_file} = $data{file};
+  $data{lsm_rel} = join '/',('..')x5,'confocalStacks',$data{date};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{sage_image} = join('/',@data{qw(date source_file)});
+  # Common-structure directories (SecData projections is an outlier)
+  foreach (qw(projection reference registration rotation tiff translation)) {
+    my $dir = join('/',$SECONDARY,($_ . 's'),$data{date});
+    $dir .= "/$no_ext" if (/projection/);
+    my $loc = join('/',($_ . 's'),$data{line});
+    $loc .= "/$no_ext" if (/projection/);
+    $data{$_ . '_dir'} = $dir;
+    $data{$_ . '_loc'} = $loc;
+    #$data{$_ . '_link'} = join '/',$ORGANIZED,$_ . 's',$LINK_SUFFIX;
+    $data{$_ . '_rel'} = join '/',('..')x5,'SecData',$loc;
+  }
+  $data{short_file} = $no_ext;
+
+  #generate a random number
+  my $range = 998;
+  my $minimum = 1;
+  my $random_number = int(rand($range)) + $minimum;
+  $data{random_num} = $random_number;
+
+  # Channel Assignments
+  my $list_img_channel_cmd = '/misc/local/pipeline/bin/list_img_channels '
+                             .  $data{lsm_dir} . "/" . $data{lsm_file};
+  my ($red_chan,$green_chan,$blue_chan,$ref_chan_num,$detect);
+  open(CMD, "$list_img_channel_cmd |");
+  my $detect = 0;
+  while (my $output = <CMD>) {
+    chomp($output);
+    unless ($output =~ /Error/) {
+        ($red_chan, $green_chan, $blue_chan, $ref_chan_num) = split(/\t/,$output);
+        $detect = 1;
+    }
+  }
+  close(CMD);
+
+  $data{detect_chan} = $detect;
+  $data{lsm_red_chan} = $red_chan;
+  $data{lsm_green_chan} =  $green_chan;
+  $data{lsm_blue_chan} = $blue_chan;
+
+  # Set stain antibody, tissue orientation, and area
+  $data{align_image} = 1;
+  $command = 'mysql -h mysql3 -u sageRead -psageRead sage --skip_column_names '
+              . '--exec="SELECT '
+              . "stain_antibody,tissue_orientation,IF(area IS NULL,organ,area) "
+              . "FROM image_data_mv WHERE name='$start"
+              . "';" . '"';
+  $result = `$command`;
+  $data{command2} = $command;
+  $data{result2} = $result;
+  ($data{stain_antibody},$data{tissue_orientation},$data{area}) = split(/\s+/,$result);
+  $data{align_image} = 0 if ($data{stain_antibody} ne 'NC82'
+                             && $data{stain_antibody} ne 'NULL');
+  $data{tissue_orientation} =
+      ($data{tissue_orientation} eq 'NULL') ? 'face_up'
+                                            : $data{tissue_orientation};
+  $data{area} = lc(substr($data{area}||'X',0,1));
+  $data{organ} = $data{area};
+
+  $data{reverse_zstack} = 0;
+  $data{channel_one_color} = "Green";
+  $data{channel_two_color} = "black";
+  if ($data{tissue_orientation} eq "face_down") {
+    $data{reverse_zstack} = 1;
+    $data{channel_one_color} = "black";
+    $data{channel_two_color} = "Green";
+  }
+  else {
+    $data{channel_one_color} = "Green";
+    $data{channel_two_color} = "black";
+  }
+
+  # VNC
+  $data{rigid_raw} = $data{short_file} . "_rigid.raw";
+  $data{rigid_marker} = $data{short_file} . "_rigid.marker"; 
+  $data{rigid_swc} = $data{short_file}. "_rigid.swc";
+  $data{rigid_ps_raw} = $data{short_file} . "_rigid_ps.raw";
+  $data{rigid_ps_local_raw} = $data{short_file} . "_rigid_ps_local.raw";
+  # Shepherd VNC alignment
+  $data{registered_rigid_raw} = $data{short_file} . '-rigid.raw';
+  $data{registered_rigid_c1_nrrd} = $data{short_file} . '-rigid_C1.nrrd';
+  $data{registered_rigid_c2_nrrd} = $data{short_file} . '-rigid_C2.nrrd';
+  $data{registered_rigid_affine_xform} = $data{short_file} . '-rigid-affine.xform';
+  $data{registered_rigid_warp_xform} = $data{short_file} . '-rigid-warp.xform';
+  $data{registered_rigid_bgwarp_nrrd} = $data{short_file} . '-rigid-BGwarp.nrrd';
+  $data{registered_rigid_warp_qual} = $data{short_file} . '-rigid-warp_qual.csv';
+  $data{registered_rigid_sgwarp_nrrd} = $data{short_file} . '-rigid-SGwarp.nrrd';
+  $data{registered_rigid_warp_raw} = $data{short_file} . '-rigid-warp.raw';
+  $data{registered_pp_raw} = $data{short_file} . '-PP.raw';
+  $data{registered_pp_c1_nrrd} = $data{short_file} . '-PP_C1.nrrd';
+  $data{registered_pp_c2_nrrd} = $data{short_file} . '-PP_C2.nrrd';
+  $data{registered_pp_sg_nrrd} = $data{short_file} . '-PP_SG.nrrd';
+  $data{registered_pp_bg_nrrd} = $data{short_file} . '-PP_BG.nrrd';
+  $data{registered_pp_initial_xform} = $data{short_file} . '-PP-initial.xform';
+  $data{registered_pp_affine_xform} = $data{short_file} . '-PP-affine.xform';
+  $data{registered_pp_warp_xform} = $data{short_file} . '-PP-warp.xform';
+  $data{registered_pp_bgwarp_nrrd} = $data{short_file} . '-PP-BGwarp.nrrd';
+  $data{registered_pp_warp_qual} = $data{short_file} . '-PP-warp_qual.csv';
+  $data{registered_pp_warp_qual_temp} = $data{short_file} . '-PP-warp_qual.tmp';
+  $data{registered_pp_sgwarp_nrrd} = $data{short_file} . '-PP-SGwarp.nrrd';
+  $data{registered_pp_warp_png} = $data{short_file} . '-PP-warp.png';
+  $data{registered_pp_warp_raw} = $data{short_file} . '-PP-warp.raw';
+
+  # TIFF and JPG files
+  $data{tiff_file} = $data{short_file} . '.tif';
+  $data{projection_file} = $data{short_file} . '_total.jpg';
+  # Registrations
+  $data{registered_global_raw} = $data{short_file} . '.raw.tmp_GF.raw';
+  $data{registered_global_tiff} = $data{short_file} . '.reg.global.raw';
+  $data{projection_global_registered} = $data{short_file} . '.reg.global.jpg';
+  $data{registered_local_raw} = $data{short_file} . '.raw.tmp_GF_local.raw';
+  $data{registered_local_tiff} = $data{short_file} . '.reg.local.raw';
+  $data{projection_local_registered} = $data{short_file} . '.reg.local.jpg';
+  $data{projection_local_registered_file} = $data{projection_local_registered};
+  $data{registered_loop1_tiff} = $data{short_file} . '.loop1.raw';
+  $data{registered_loop2_tiff} = $data{short_file} . '.loop2.raw';
+  $data{registered_loop2_projection} = $data{short_file} . '.loop2.jpg';
+  $data{registered_quality} = $data{short_file} . '.loop2.raw_matching_quality.csv';
+  # Registration data to index
+  $data{registration_local_tiff_file} = $data{registered_local_tiff};
+  $data{registration_loop2_tiff_file} = $data{registered_loop2_tiff};
+  $data{registration_quality_file} = $data{registered_quality};
+  $data{registration_subject_file} = $data{short_file} . '.loop2.raw_subject.csv';
+  $data{registration_target_file} = $data{short_file} . '.loop2.raw_target.csv';
+  # Link directories
+  $data{link_dirs} = join ' ',@data{map { $_.'_link' }
+      qw(lsm tiff registration)};
+  # Secondary data directories
+  $data{secdata_dirs} = join ' ',@data{map { $_.'_dir' }
+      qw(registration tiff)},$data{link_dirs};
+  $data{secdata_store} = '';
+  $data{substack_store} = '';
+  $return = { $item[0] => join('/',$data{date},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+stack: lsmname
+{
+   $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+date: /\d{4}(?:0[1-9]|1[012])(?:0[1-9]|[12]\d|3[01])/ | <error: illegal date>
+lsmname: /[^\.]+/ | <error: illegal clipname>
+extension: 'lsm' | <error: illegal extension>

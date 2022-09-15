@@ -1,0 +1,56 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  dickson_tertiary.bash_tmpl
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2013-05-09
+# Description:    Create Dickson Lab tertiary images
+# Required resources:
+#   Programs:     ImageJ
+# Parameters:     $1: ImageJ macro path
+# ****************************************************************************
+
+# Required resources
+IMAGEJ="/usr/local/java/jre/bin/java -mx8000m -XX:+AggressiveHeap -jar /usr/local/ImageJ/ij.jar -ijpath /usr/local/ImageJ -batch "
+FIJI="/usr/local/Fiji/ImageJ-linux64 --headless -batch "
+
+# Parameters
+if [ ! $1 ]
+then
+  echo "Error: no ImageJ macro specified"
+  exit -1
+fi
+IMAGEJ_MACRO=$1
+
+# Make sure the ImageJ macro exists
+if [ ! -e $IMAGEJ_MACRO ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO does not exist"
+  exit -1
+fi
+
+echo "Running on "`hostname`
+# Run the ImageJ macro
+START=`date '+%F %T'`
+//xvfb-run $IMAGEJ $IMAGEJ_MACRO
+$FIJI $IMAGEJ_MACRO
+if [ $? -ne 0 ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO failed"
+  exit -1
+fi
+
+STOP=`date '+%F %T'`
+/home/svirskasr/workspace/sage/bin/add_operation.pl -operation tertiary_data -name "$grammar{sage_image}"  -start "$START" -stop "$STOP" -operator $grammar{userid} -program 'Fiji' -version '1.47q' -parm imagej_macro="/misc/local/pipeline/template/dickson_tertiary.imj_tmpl" -parm imagej_macro_version="1.0"
+
+# Link
+cd $grammar{projection_link}
+ln -sf $grammar{projection_rel}/$grammar{projection_local_registered} $grammar{projection_local_registered}
+
+# Indexing
+/opt/informatics/bin/sage_loader.pl -config rubin_light_imagery -grammar /misc/local/pipeline/grammar/dickson.gra -lab dickson -debug -item "$grammar{date}/$grammar{lsm_file}"
+
+# We're done! Delete the ImageJ macro and this shell script.
+rm -f $IMAGEJ_MACRO
+trap "rm -f $0" 0
+echo "Job complete for $grammar{short_file}"

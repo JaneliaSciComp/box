@@ -1,0 +1,268 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  chacrm.bash_tmpl
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-01-02
+# Description:    After processing, this shell script template implements the
+#                 image processing flow for the Rubin Lab's ChaCRM images.
+#                 If needed, SecData and organizedData directory structures
+#                 are created. ImageJ is used to create work products, and
+#                 links from organizedData to SecData are created.
+# Required resources:
+#   Programs:     ImageJ
+#                 clustermakemov
+# Parameters:     $1: ImageJ macro path
+# ****************************************************************************
+
+# Required resources
+IMAGEJ="/usr/local/java/jre/bin/java -mx8000m -XX:+AggressiveHeap -jar /usr/local/ImageJ/ij.jar -ijpath /usr/local/ImageJ -batch "
+GETCHAN="/usr/local/pipeline/bin/getchan_test"
+QPOPULATE="/usr/local/pipeline/bin/qscore_populate -v"
+
+# Parameters
+if [ ! $1 ]
+then
+  echo "Error: no ImageJ macro specified"
+  exit -1
+fi
+IMAGEJ_MACRO=$1
+
+# Make sure the .lsm file exists
+if [ -e $grammar{lsm_dir}/$grammar{lsm_file} ]
+then
+#  chmod 555 $grammar{lsm_dir}/$grammar{lsm_file}
+  echo "File exists"
+else
+  echo -e "Error: image $grammar{lsm_dir}/$grammar{lsm_file} does not exist"
+  exit -1
+fi
+
+# Make sure the ImageJ macro exists
+if [ ! -e $IMAGEJ_MACRO ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO does not exist"
+  exit -1
+fi
+
+# Create work product directories as needed
+echo "Creating work product directories"
+for THISDIR in $grammar{secdata_dirs}
+do
+  if [ ! -e $THISDIR ]
+  then
+    mkdir -p -m 755 $THISDIR
+    if [ ! -e $THISDIR ]
+    then
+      echo -e "Could not create $THISDIR"
+      exit -1
+    fi
+  fi
+done
+
+
+# Set up X frame  buffer
+/usr/bin/Xvfb :99 -screen 0 1x1x24 -sp /usr/lib64/xserver/SecurityPolicy -fp /usr/share/X11/fonts/misc &
+MYPID=$!
+export DISPLAY="localhost:99.0"
+
+# Run the ImageJ macro to create tiff
+$IMAGEJ $IMAGEJ_MACRO
+if [ $? -ne 0 ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO failed"
+  exit -1
+fi
+
+# We're done with the frame buffer
+kill -9 $MYPID
+
+# Determine reference channel and resolution
+Rv=`$GETCHAN $grammar{lsm_dir}/$grammar{lsm_file}`
+# Anything other than a 0 in $? is bad...
+if [ $? -ne 0 ]
+then
+  echo "Could not determine reference channel";
+  exit;
+else
+  Channel=`echo $Rv | cut -d' ' -f1`;
+  Xscale=`echo $Rv | cut -d' ' -f2`;
+  Yscale=`echo $Rv | cut -d' ' -f3`;
+  Zscale=`echo $Rv | cut -d' ' -f4`;
+fi
+
+if [ "$grammar{reverse_zstack}" -eq 1 ]
+then
+  echo "Align Tiff";
+  ALIGNIMG="$grammar{tiff_dir}/$grammar{tiff_file}";
+  Channel=0;
+else
+  echo "Not Reversing";
+  ALIGNIMG="$grammar{lsm_dir}/$grammar{lsm_file}";  
+fi
+
+echo "Aligning $ALIGNIMG using Channel $Channel";
+
+# Registration
+if [ "$grammar{area}" == "b" ]
+then
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/groups/peng/home/brainaligner/lib
+
+  /bin/rm -f "$grammar{registration_dir}/$grammar{tiff_file}.tmp_GF.raw"
+  echo "START jba (1)"
+  echo "IMG INFO $Channel $Xscale $Zscale $Yscale"
+  /groups/peng/home/brainaligner/program/jba \
+   -s "$ALIGNIMG" \
+   -c $Channel \
+   -t "/groups/scicomp/targetbrainimages/JFRCtempate2010_mask101012/JFRCtempate2010.8bit.tif" \
+   -L "/groups/scicomp/targetbrainimages/JFRCtempate2010_mask101012/JFRCtempate2010.mask101012.marker" \
+   -C 0 \
+   -o "$grammar{registration_dir}/$grammar{tiff_file}.tmp_GF.raw" \
+   -w 0 \
+   -X 1.0000 \
+   -Z 1.0000 \
+   -U $Xscale \
+   -V $Zscale \
+   -B 1024 \
+   -e  1.00 \
+   -R
+  if [ ! -e "$grammar{registration_dir}/$grammar{tiff_file}.tmp_GF.raw" ]
+  then
+    echo -e "Error: jba (1) failed"
+    exit -1
+  fi
+  echo "COMPLETED jba"
+
+  /bin/rm -f "$grammar{registration_dir}/$grammar{registered_global_tiff}"
+  echo "START lobe_seger"
+  /groups/peng/home/brainaligner/program/lobe_seger \
+   -i "$grammar{registration_dir}/$grammar{tiff_file}.tmp_GF.raw" \
+   -c $Channel \
+   -o "$grammar{registration_dir}/$grammar{registered_global_tiff}"
+  if [ ! -e "$grammar{registration_dir}/$grammar{registered_global_tiff}" ]
+  then
+    echo -e "Error: lobe_seger failed"
+    exit -1
+  fi
+  echo "COMPLETED lobe_seger"
+
+  /bin/rm -f "$grammar{registration_dir}/$grammar{tiff_file}.tmp_GF_local.raw"
+  echo "START jba (2)"
+  /groups/peng/home/brainaligner/program/jba \
+   -s "$grammar{registration_dir}/$grammar{registered_global_tiff}" \
+   -c $Channel \
+   -t "/groups/scicomp/targetbrainimages/JFRCtempate2010_mask101012/JFRCtempate2010.8bit.noOptLobes.tif" \
+   -L "/groups/scicomp/targetbrainimages/JFRCtempate2010_mask101012/JFRCtempate2010.mask101012.marker" \
+   -C 0 \
+   -o "$grammar{registration_dir}/$grammar{tiff_file}.tmp_GF_local.raw" \
+   -w 0 \
+   -X 1.0000 \
+   -Z 1.0000 \
+   -U 1.0000 \
+   -V 1.0000 \
+   -B 1024 \
+   -e  1.00
+  if [ ! -e "$grammar{registration_dir}/$grammar{tiff_file}.tmp_GF_local.raw" ]
+  then
+    echo -e "Error: jba (2) failed"
+    exit -1
+  fi
+  echo "COMPLETED jba"
+
+  /bin/rm -f "$grammar{registration_dir}/$grammar{tiff_file}.loop1.tif"
+  echo "START jba (3)"
+  /groups/peng/home/brainaligner/program/jba \
+   -s "$grammar{registration_dir}/$grammar{tiff_file}.tmp_GF_local.raw" \
+   -c $Channel \
+   -t "/groups/scicomp/targetbrainimages/JFRCtempate2010_mask101012/JFRCtempate2010.8bit.noOptLobes.tif" \
+   -L "/groups/scicomp/targetbrainimages/JFRCtempate2010_mask101012/JFRCtempate2010.mask101012.marker" \
+   -C 0 \
+   -o "$grammar{registration_dir}/$grammar{tiff_file}.loop1.tif" \
+   -w 10 \
+   -X 1.0000 \
+   -Z 1.0000 \
+   -U 1.0000 \
+   -V 1.0000 \
+   -B 1024 \
+   -e  1.00 \
+   -j 1 \
+   -H 2
+  if [ ! -e "$grammar{registration_dir}/$grammar{tiff_file}.loop1.tif" ]
+  then
+    echo -e "Error: jba (3) failed"
+    exit -1
+  fi
+  echo "COMPLETED jba"
+
+  /bin/rm -f "$grammar{registration_dir}/$grammar{tiff_file}.loop2.tif"
+  echo "START jba (4)"
+  /groups/peng/home/brainaligner/program/jba \
+   -s "$grammar{registration_dir}/$grammar{tiff_file}.loop1.tif" \
+   -c $Channel \
+   -t "/groups/scicomp/targetbrainimages/JFRCtempate2010_mask101012/JFRCtempate2010.8bit.noOptLobes.tif" \
+   -L "/groups/scicomp/targetbrainimages/JFRCtempate2010_mask101012/JFRCtempate2010.mask101012.marker" \
+   -C 0 \
+   -o "$grammar{registration_dir}/$grammar{tiff_file}.loop2.tif" \
+   -w 10 \
+   -X 1.0000 \
+   -Z 1.0000 \
+   -U 1.0000 \
+   -V 1.0000 \
+   -B 1024 \
+   -e  1.00 \
+   -j 1 \
+   -H 2
+  if [ ! -e "$grammar{registration_dir}/$grammar{tiff_file}.loop2.tif" ]
+  then
+    echo -e "Error: jba (4) failed"
+    exit -1
+  fi
+  echo "COMPLETED jba"
+
+  /bin/rm -f "$grammar{registration_dir}/$grammar{registered_local_tiff}"
+  echo "START jba (5)"
+  /groups/peng/home/brainaligner/program/jba \
+   -T \
+   -s "$grammar{registration_dir}/$grammar{tiff_file}.loop2.tif" \
+   -t "/groups/scicomp/targetbrainimages/JFRCtempate2010_mask101012/JFRCtempate2010.8bit.tif" \
+   -o "$grammar{registration_dir}/$grammar{registered_local_tiff}" \
+   -A 1 \
+   -a 2
+  if [ ! -e "$grammar{registration_dir}/$grammar{registered_local_tiff}" ]
+  then
+    echo -e "Error: jba (5) failed"
+    exit -1
+  fi
+  echo "COMPLETED jba"
+
+  # Remove transient files
+  /bin/rm -f "$grammar{registration_dir}/$grammar{tiff_file}.tmp_GF.raw"
+  /bin/rm -f "$grammar{registration_dir}/$grammar{tiff_file}.tmp_GF_local.raw"
+  /bin/rm -f "$grammar{registration_dir}/$grammar{tiff_file}.loop1.tif"
+
+# Remove transient files
+  #/bin/rm -f $grammar{tiff_dir}/$grammar{tiff_file}
+
+  echo "COMPLETED registration"
+
+  echo "Loading Q scores into Nighthawk"
+  if [ -e "$grammar{registration_dir}/$grammar{registered_quality}" ]
+  then
+    echo "$grammar{registration_dir}/$grammar{registered_quality}" | $QPOPULATE
+  fi
+  echo "Loaded Q scores into Nighthawk"
+
+  # Create links
+  echo "Creating work product links"
+  # Registration
+  cd $grammar{registration_link}
+  ln -sf $grammar{registration_rel}/$grammar{registered_local_tiff} $grammar{registered_local_tiff}
+  ln -sf $grammar{registration_rel}/$grammar{registered_quality} $grammar{registered_quality}
+else
+  echo "Skipping tissue $grammar{area}"
+fi
+
+# We're done! Delete the ImageJ macro and this shell script.
+rm -f $IMAGEJ_MACRO
+trap "rm -f $0" 0
+echo "Job complete for $grammar{short_file}"

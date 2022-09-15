@@ -1,0 +1,258 @@
+#!/usr/bin/perl
+# ****************************************************************************
+# Resource name:  qscore_populate
+# Written by:     Rob Svirskas
+# Revision level: 0.1
+# Date released:  2009-11-18
+# Description:    See the bottom of this file for the POD documentation.
+#                 Search for the string '=head'.
+# Required resources:
+#   Programs:        NONE
+#   USEd modules:    strict
+#                    warnings
+#                    DBI
+#                    Getopt::Long
+#                    IO::File
+#                    IO::Select
+#                    Pod::Text
+#                    Pod::Usage
+#   Config files:    NONE
+#   Input files:     (as specified by -file parm)
+#   Output files:    (as specified by -output parm)
+#   Database tables:
+#     Nighthawk:     image_property (SUI)
+#
+#                               REVISION LOG
+# ----------------------------------------------------------------------------
+# | revision | name            | date    | description                       |
+# ----------------------------------------------------------------------------
+#     0.1     Rob Svirskas      08-01-04  Initial version
+# ****************************************************************************
+
+# Installed modules
+use strict;
+use warnings;
+use DBI;
+use Getopt::Long;
+use IO::File;
+use IO::Select;
+use Pod::Text;
+use Pod::Usage;
+
+# ****************************************************************************
+# * Constants                                                                *
+# ****************************************************************************
+my %sth = (
+  IMAGE => "SELECT id FROM image WHERE family='rubin-chacrm' AND name "
+           . 'LIKE ?',
+  SEL => 'SELECT id,value FROM image_property WHERE image_id=? AND type=?',
+  UPD => 'UPDATE image_property SET value=? WHERE id=?',
+  INS => 'INSERT INTO image_property (image_id,type,value) VALUES (?,?,?)',
+);
+# ****************************************************************************
+# * Global variables                                                         *
+# ****************************************************************************
+# Command-line parameters
+my $VERBOSE = 0;
+# Database and file handles
+my ($dbh,$handle);
+# Counter
+my %count;
+
+# ****************************************************************************
+# * Main                                                                     *
+# ****************************************************************************
+GetOptions('file=s'   => \my $input_file,
+           'output=s' => \my $output_file,
+           verbose    => \$VERBOSE,
+           help       => \my $HELP)
+  or pod2usage(-1);
+
+# Display help and exit if the -help parm is specified
+pod2text($0),&terminateProgram() if ($HELP);
+
+# Open the output stream and alias STDERR
+$handle = ($output_file) ? (new IO::File $output_file,'>'
+              or &terminateProgram("ERROR: could not open $output_file ($!)"))
+                         : (new_from_fd IO::File \*STDOUT,'>'
+              or &terminateProgram("ERROR: could not open STDOUT ($!)"));
+autoflush $handle 1;
+
+$dbh = DBI->connect('dbi:mysql:dbname=nighthawk;host=mysql2',
+                    ('nighthawkApp')x2)
+  or &terminateProgram("Can't connect to DB");
+$sth{$_} = $dbh->prepare($sth{$_}) || &terminateProgram($dbh->errstr)
+    foreach (keys %sth);
+
+&processInput($input_file);
+printf $handle "Images %-8s\t%d\n",$_,($count{$_}/2) foreach (sort keys %count);
+&terminateProgram();
+
+
+# ****************************************************************************
+# * Subroutine:  terminateProgram                                            *
+# * Description: This routine will gracefully terminate the program. If a    *
+# *              message is passed in, we exit with a code of -1. Otherwise, *
+# *              we exit with a code of 0.                                   *
+# *                                                                          *
+# * Parameters:  message: the error message to print                         *
+# * Returns:     NONE                                                        *
+# ****************************************************************************
+sub terminateProgram
+{
+  my $message = shift;
+  print { $handle || \*STDERR } "$message\n" if ($message);
+  $handle->close if ($handle);
+  ref($sth{$_}) && $sth{$_}->finish foreach (keys %sth);
+  $dbh->disconnect if ($dbh);
+  exit(($message) ? -1 : 0);
+}
+
+
+# ****************************************************************************
+# * Subroutine:  processInput                                                *
+# * Description: This routine will open the input stream (one or more files  *
+# *              represented by a glob term, or STDIN).                      *
+# *                                                                          *
+# * Parameters:  glob_term: the glob term indicating the file(s) (optional)  *
+# * Returns:     NONE                                                        *
+# ****************************************************************************
+sub processInput
+{
+  my $glob_term = shift;
+  if ($glob_term) {
+    my @file_list = glob $glob_term;
+    &terminateProgram("ERROR: no files matching $glob_term")
+      if (! scalar @file_list);
+    foreach my $file (@file_list) {
+      my $stream = new IO::File $file,'<'
+          or &terminateProgram("ERROR: Could not open $file ($!)");
+      &processStream($stream,$file);
+    }
+  }
+  else {
+    my $select = IO::Select->new(\*STDIN);
+    &terminateProgram('ERROR: you must specify a file or provide input on '
+                      . 'STDIN') unless ($select->can_read(0));
+    my $stream = new_from_fd IO::File \*STDIN,'<'
+        or &terminateProgram("ERROR: could not open STDIN ($!)");
+    &processStream($stream,'STDIN');
+  }
+}
+
+
+sub processStream
+{
+  my($stream,$file) = @_;
+  while (defined(my $item = $stream->getline)) {
+    chomp($item);
+    (my $stack = $item) =~ s/.*\///;
+    $stack =~ s/\..*//;
+    next unless ($stack =~ /^GMR_/);
+    open CSV,$item or die "Could not open $item ($!)";
+    <CSV>;
+    chomp(my $line = <CSV>);
+    $line =~ s/ //g;
+    my %q;
+    ($q{qi},$q{qm}) = split(/,/,$line);
+    my $term = '%' . $stack . '.lsm';
+    $sth{IMAGE}->execute($term);
+    my $iid = $sth{IMAGE}->fetchrow_array();
+    next unless ($iid);
+    print $handle "$stack $iid\n" if ($VERBOSE);
+    foreach (qw(qi qm)) {
+      $sth{SEL}->execute($iid,$_);
+      my($id,$value) = $sth{SEL}->fetchrow_array();
+      if ($id) {
+        if ($value == $q{$_}) {
+          $count{skipped}++;
+        }
+        else {
+          my $rv = $sth{UPD}->execute($q{$_},$id);
+          die "Count not update $_ for $stack" unless (1 == $rv);
+          print $handle "  Update $iid $_ to $q{$_}\n" if ($VERBOSE);
+          $count{updated}++;
+        }
+      }
+      else {
+        my $rv = $sth{INS}->execute($iid,$_,$q{$_});
+        die "Count not insert $_ for $stack" unless (1 == $rv);
+        print $handle "  Inserted $_=$q{$_} for $iid\n" if ($VERBOSE);
+        $count{inserted}++;
+      }
+    }
+  }
+}
+
+# ****************************************************************************
+# * POD documentation                                                        *
+# ****************************************************************************
+__END__
+
+=head1 NAME
+
+qscore_populate - add Qi/Qm scores to Nighthawk for given stacks
+
+=head1 SYNOPSIS
+
+select_representative [-file <input file>] [-output <output file>]
+                      [-verbose] [-help]
+
+=head1 DESCRIPTION
+
+This program will accept as input one or more files (or a stream from STDIN)
+containing registration Q score filenames. These will have their Q scores
+loaded into the Nighthawk database.
+
+=head1 RUN INSTRUCTIONS
+
+This program acts as a filter - it accepts as input a file or "piped in"
+stream (see EXAMPLES). Monitoring output goes to STDOUT, unless redirected by
+the -output parameter.
+
+The following options are supported:
+
+  -file:      (optional) input file name or glob term
+  -output:    (optional) send monitoring output to specified file
+  -verbose:   (optional) display monitoring output (chatty)
+  -help:      (optional) display usage help and exit
+
+Note that a "glob term" can be specified for the file name. For example,
+if the -file parameter is specified as "*.txt", every file in the current
+directory ending with ".txt" will be processed. If the -file parameter is
+not specified, input is expected on STDIN. Options must be separated by
+spaces.
+
+All output goes to STDOUT, unless redirected by the -output parameter.
+
+=head1 EXAMPLES
+
+The following command:
+
+  qscore_populate -file locs.txt
+
+will process a file of Q score files, and load all Q score information
+into Nighthawk.
+  
+=head1 EXIT STATUS
+
+The following exit values are returned:
+
+   0  Successful completion
+
+  -1  An error occurred
+
+=head1 BUGS
+
+None known.
+
+=head1 AUTHOR INFORMATION
+
+Copyright 2009 by Howard Hughes Medical Institute
+
+Author: Robert R. Svirskas, HHMI Janelia Farm Research Campus
+
+Address bug reports and comments to:
+svirskasr@janelia.hhmi.org
+
+=cut

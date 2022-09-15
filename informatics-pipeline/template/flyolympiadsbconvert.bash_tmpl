@@ -1,0 +1,33 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flyolympiadsbconvert.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    Script to converts Fly Olympiad avi to sbfmf
+# Required resources:
+#   Programs:     sbconvert
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+# 
+# move link 
+if [ ! -d "$grammar{compressed_topdir_path}" ]
+then
+    cd "$grammar{base_dir}"
+    mv "$grammar{topdir}" "$grammar{compressed_path}"
+fi
+
+# create tube directory
+if [ ! -d "$grammar{compressed_sbfmf_path}" ]
+then
+    mkdir "$grammar{compressed_sbfmf_path}"
+fi
+
+# link and run sbconvert
+cd "$grammar{compressed_sbfmf_path}"
+
+ln -s ../*$grammar{tube}.avi .
+
+/groups/flyprojects/home/olympiad/bin/sbmoviesuite/sbconvert_cluster.pl -R -OR
+#/groups/flyprojects/home/olympiad/bin/sbmoviesuite/sbconvert_cluster.pl 

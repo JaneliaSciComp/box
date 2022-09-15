@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Send a lab's stacks to be archoved to STDOUT.
+# This script takes two parameters:
+# 1) the lab name in lowercase.
+# 2) (optional) aging in days
+
+case $1 in
+
+# Truman Lab
+truman)
+ls /groups/truman/larvalscreen/Rubin_Line_Confocals >/dev/null
+find /groups/truman/larvalscreen/Rubin_Line_Confocals/ -mindepth 1 -maxdepth 1 | grep '\/[Cc]onfocal '
+;;
+
+esac

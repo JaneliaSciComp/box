@@ -1,0 +1,60 @@
+// $grammar{registered_local_tiff}
+requires("1.38x");
+// Power Mean (Specify order of p below), Average Intensity, Maximum Intensity, Minimum Intensity, Sum of Slices, Standard Deviation, Median
+
+var method="[Maximum Intensity]";
+
+//if ($grammar{reverse_zstack} == 1) {
+//	method="[Average Intensity]";
+//}
+
+
+
+print("Sequence start for $grammar{registered_local_tiff}");
+saveSettings();
+loadStack();
+recolorStack();
+print("Projecting");
+run("RGB Zprojector","red=" + method + " green=" + method
+    + " blue=" + method + " power=2");
+print("Enhancing contrast");
+// run("Enhance Contrast", "saturated=0.5 normalize_all");
+run("Enhance Contrast", "saturated=0.25");
+print("Saving");
+saveAs("Jpeg", "$grammar{projection_dir}/$grammar{projection_local_registered}");
+terminateMacro();
+
+function loadStack() {
+  print("Opening $grammar{registration_dir}/$grammar{registered_local_tiff}");
+  open("$grammar{registration_dir}/$grammar{registered_local_tiff}");
+  if (nImages() == 0) {
+    exit("Could not open $grammar{registration_dir}/$grammar{registered_local_tiff}");
+  }
+  print("Image opened");
+}
+
+function recolorStack() {
+  // Convert
+  print("Converting to RGB");
+  run("RGB Color");
+  // Split
+  print("Splitting");
+  run("RGB Split");
+  // Merge
+  print("Merging");
+  if ($grammar{reverse_zstack} == 1) {
+    run("RGB Merge...","red=*None* green=[$grammar{registered_local_tiff} (green)] blue=*None*");
+  } else {
+    run("RGB Merge...","red=*None* green=[$grammar{registered_local_tiff} (red)] blue=*None*");
+  }
+}
+
+function terminateMacro() {
+  while (nImages()>0) {
+    selectImage(nImages());
+    run("Close");
+  }
+  print("Sequence stop");
+  run("Quit","");
+  exit();
+}

@@ -1,0 +1,87 @@
+# ****************************************************************************
+# Resource name:  flyolympiadclassifysex.gra      
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2010-02-07
+# Description:    This grammar will 
+#                 
+#                 
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+
+start: pathname
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Base directories
+  my $BASE = '/groups/sciserv/flyolympiad/Olympiad_Screen/fly_bowl';
+  
+  $data{reg_dir_path} = $BASE . '/02_register/' . $data{topdir};
+  
+  $data{classifysex_dir_path} = $BASE . '/03_classifysex/' . $data{topdir};
+  
+  $data{checkfile} = $data{reg_dir_path} . '/sexclassifier_diagnostics.txt';  
+  
+  $data{unique_id} =  $data{topdir} . "-sex";
+  $data{unique_id} =~ s/\;/\_/g;
+  $data{unique_id} =~ s/\s+/\_/g;
+  $data{unique_id} =~ s/\(/\_/g;
+  $data{unique_id} =~ s/\)/\_/g;
+  
+  $data{stdout_path} = '/groups/flyprojects/home/olympiad/bowl_pipeline/LOGS/CLASSIFYSEX/' . $data{unique_id} . '.stdout';
+  $data{stderr_path} = '/groups/flyprojects/home/olympiad/bowl_pipeline/LOGS/CLASSIFYSEX/' . $data{unique_id} . '.stderr';
+
+  # Adjust registration settings
+  # default settings
+  my $analysis_protocol = "current";
+  my $runpath = "/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/current";
+  my $get_cmd = '/groups/flyprojects/home/olympiad/bowl_bin/get_screen_type ' . $data{topdir};
+  open (CMD1, "$get_cmd |");
+  while (my $output = <CMD1>) {
+       chomp($output);
+       if ($output) {
+             if ($output =~ /non_olympiad/) {
+                  $runpath = "/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/current_" . $output;
+	          $analysis_protocol = "current_" . $output;
+             } else {
+                  $runpath = "/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/current";
+		  $analysis_protocol = "current";
+             }
+       }
+  }
+  close (CMD1);
+  $data{run_path} = $runpath;
+  $data{analysis_protocol} = $analysis_protocol;
+  
+  $return = { $item[0] => $data{pathname}, %data };
+}
+
+pathname: sourcedir '/' filename
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',$data{sourcedir},$data{filename}), %data };
+}
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+filename: clipname '' extension
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+sourcedir: topdir
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+topdir: /[^\/]+/ | <error: illegal top level directory>
+clipname: /registered_trx/ | <error: illegal clipname here>
+extension: '.mat' | <error: illegal extension>

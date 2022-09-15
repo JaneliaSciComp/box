@@ -1,0 +1,122 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  rubin_ssplit.bash_tmpl
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2013-03-21
+# Description:    After processing, this shell script template implements the
+#                 image processing flow for the Rubin Lab's ssplit images.
+#                 If needed, SecData directory structures
+#                 are created. ImageJ is used to create work products.
+# Required resources:
+#   Programs:     ImageJ
+# Parameters:     $1: ImageJ macro path
+# ****************************************************************************
+
+# Required resources
+IMAGEJ="/usr/local/java/jre/bin/java -mx8000m -XX:+AggressiveHeap -jar /usr/local/ImageJ/ij.jar -ijpath /usr/local/ImageJ -batch "
+MAKEMOVIE="/misc/local/pipeline/bin/createmp4"
+
+START=`date '+%F %T'`
+
+# Parameters
+if [ ! $1 ]
+then
+  echo "Error: no ImageJ macro specified"
+  exit -1
+fi
+IMAGEJ_MACRO=$1
+IMAGEJ_MACRO2=$2
+
+# Make sure the .lsm file exists
+if [ -e $grammar{lsm_dir}/$grammar{lsm_file} ]
+then
+#  chmod 555 $grammar{lsm_dir}/$grammar{lsm_file}
+  echo "File exists"
+else
+  echo -e "Error: image $grammar{lsm_dir}/$grammar{lsm_file} does not exist"
+  exit -1
+fi
+
+# Make sure the ImageJ macros exist
+if [ ! -e $IMAGEJ_MACRO ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO does not exist"
+  exit -1
+fi
+if [ ! -e $IMAGEJ_MACRO2 ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO2 does not exist"
+  exit -1
+fi
+
+# Add /usr/local/lib to library path for mplayer library
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+
+# Create work product directories as needed
+echo "Creating work product directories"
+for THISDIR in $grammar{secdata_dirs}
+do
+  if [ ! -e $THISDIR ]
+  then
+    mkdir -p -m 755 $THISDIR
+    if [ ! -e $THISDIR ]
+    then
+      echo -e "Could not create $THISDIR"
+      exit -1
+    fi
+  fi
+done
+
+echo -e "Channel assignments:"
+echo -e "  Red: $grammar{lsm_red_chan}"
+echo -e "  Green: $grammar{lsm_green_chan}"
+echo -e "  Blue: $grammar{lsm_blue_chan}"
+
+# Run the ImageJ macro for translation
+xvfb-run $IMAGEJ $IMAGEJ_MACRO2
+if [ $? -ne 0 ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO2 failed"
+  exit -1
+fi
+
+# Run the ImageJ macro for projections, reference, etc.
+xvfb-run $IMAGEJ $IMAGEJ_MACRO
+if [ $? -ne 0 ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO failed"
+  exit -1
+fi
+
+
+# Convert translation .avi to .mp4
+echo "Converting translation $grammar{translation_transient}"
+if [ -e $grammar{translation_dir}/$grammar{translation_transient} ]
+then
+  $MAKEMOVIE $grammar{translation_dir}/$grammar{translation_transient} $grammar{translation_dir}/$grammar{translation_file}
+  STATUS=$?
+else
+  echo "Error: no translation at $grammar{translation_dir}/$grammar{translation_transient}"
+  exit -1
+fi
+if [ $STATUS == 0 ]
+then
+  rm $grammar{translation_dir}/$grammar{translation_transient}
+  chmod 755 $grammar{translation_dir}/$grammar{translation_file}
+else
+  echo "Error $STATUS: no translation at $grammar{translation_dir}/$grammar{translation_file}"
+  exit -1
+fi
+
+# Remove transient files
+rm $grammar{tiff_dir}/$grammar{tiff_file}
+
+# We're done! Delete the ImageJ macro and this shell script.
+cd /groups/flyprojects/home/flylight/PIPELINE/
+rm -f $IMAGEJ_MACRO
+rm -f $IMAGEJ_MACRO2
+STOP=`date '+%F %T'`
+/home/svirskasr/workspace/sage/bin/add_operation.pl -operation secondary_data -name "$grammar{sage_image}"  -start "$START" -stop "$STOP" -operator $grammar{userid} -program 'ImageJ' -version '1.38v' -parm imagej_macro="/misc/local/pipeline/template/rubin_ssplit.imj_tmpl" -parm imagej_macro_version="1.0"
+trap "rm -f $0" 0
+echo "Job complete for $grammar{short_file}"

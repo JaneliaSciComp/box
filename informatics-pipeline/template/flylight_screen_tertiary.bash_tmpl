@@ -1,0 +1,106 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  chacrm_tertiary.bash_tmpl
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-01-02
+# Description:    Create ChaCRM tertiary images
+# Required resources:
+#   Programs:     ImageJ
+# Parameters:     $1: ImageJ macro path
+# ****************************************************************************
+
+# Required resources
+
+# Parameters
+if [ ! $1 ]
+then
+  echo "Error: no ImageJ macro specified"
+  exit -1
+fi
+IMAGEJ_MACRO=$1
+
+# Make sure the ImageJ macro exists
+if [ ! -e $IMAGEJ_MACRO ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO does not exist"
+  exit -1
+fi
+
+# Set up X frame  buffer
+#/usr/bin/Xvfb :$grammar{random_num} -screen 0 1x1x24 -sp /usr/lib64/xserver/SecurityPolicy -fp /usr/share/X11/fonts/misc &
+#MYPID=$!
+#export DISPLAY="localhost:$grammar{random_num}.0"
+
+# Run the Fiji macro
+
+xvfb-run /usr/local/Fiji.app-20110307/fiji-linux64 --headless -eval 'run("Refresh JRuby Scripts","");' -Dplugins.dir=/groups/rubin/home/rubinlab/aRnim/scripts/ij/ -macro $IMAGEJ_MACRO -batch
+
+if [ $? -ne 0 ]
+then
+  echo -e "Error: Fiji macro $IMAGEJ_MACRO failed"
+  exit -1
+fi
+
+# We're done with the frame buffer
+#kill -9 $MYPID
+
+# Link
+cd $grammar{projection_link}
+ln -sf $grammar{projection_rel}/$grammar{projection_local_registered} $grammar{projection_local_registered}
+  
+# Move raw files to archive storage and replace with sym-links.
+echo "Moving raw files to archive storage"
+ARCHIVE_REG_DIR=`echo "$grammar{registration_dir}" | sed 's/^\/groups\/flylight\/flylight/\/archive\/flylight_archive/'`
+if [ ! -d "$ARCHIVE_REG_DIR" ]
+then
+  if [ -e "$ARCHIVE_REG_DIR" ]
+  then
+    # The path exists but it's not a directory.
+    echo -e "Error: $ARCHIVE_REG_DIR is not a directory"
+    exit -1
+  fi
+  mkdir -p "$ARCHIVE_REG_DIR"
+  if [ ! -d "$ARCHIVE_REG_DIR" ]
+  then
+    echo -e "Could not create $ARCHIVE_REG_DIR"
+    exit -1
+  fi
+fi
+if [ -f "$grammar{registration_dir}/$grammar{registered_local_tiff}" ]
+then
+  mv "$grammar{registration_dir}/$grammar{registered_local_tiff}" "$ARCHIVE_REG_DIR/$grammar{registered_local_tiff}"
+  if [ ! -f "$ARCHIVE_REG_DIR/$grammar{registered_local_tiff}" ]
+  then
+    echo -e "Error: could not move $grammar{registration_dir}/$grammar{registered_local_tiff} to $ARCHIVE_REG_DIR/$grammar{registered_local_tiff}. (error $?)"
+    exit -1
+  fi
+  ln -s "$ARCHIVE_REG_DIR/$grammar{registered_local_tiff}" "$grammar{registration_dir}/$grammar{registered_local_tiff}"
+  if [ ! -L "$grammar{registration_dir}/$grammar{registered_local_tiff}" ]
+  then
+    echo -e "Error: could not create symbolic link of $ARCHIVE_REG_DIR/$grammar{registered_local_tiff} at $grammar{registration_dir}/$grammar{registered_local_tiff}. (error $?)"
+    exit -1
+  fi
+fi
+if [ -f "$grammar{registration_dir}/$grammar{registered_loop2_tiff}" ]
+then
+  mv "$grammar{registration_dir}/$grammar{registered_loop2_tiff}" "$ARCHIVE_REG_DIR/$grammar{registered_loop2_tiff}"
+  if [ ! -f "$ARCHIVE_REG_DIR/$grammar{registered_loop2_tiff}" ]
+  then
+    echo -e "Error: could not move $grammar{registration_dir}/$grammar{registered_loop2_tiff} to $ARCHIVE_REG_DIR/$grammar{registered_loop2_tiff}. (error $?)"
+    exit -1
+  fi
+  ln -s "$ARCHIVE_REG_DIR/$grammar{registered_loop2_tiff}" "$grammar{registration_dir}/$grammar{registered_loop2_tiff}"
+  if [ ! -L "$grammar{registration_dir}/$grammar{registered_loop2_tiff}" ]
+  then
+    echo -e "Error: could not create symbolic link of $ARCHIVE_REG_DIR/$grammar{registered_loop2_tiff} at $grammar{registration_dir}/$grammar{registered_loop2_tiff}. (error $?)"
+    exit -1
+  fi
+fi
+echo "Moved raw files to archive storage"
+
+# We're done! Delete the ImageJ macro and this shell script.
+cd /groups/flyprojects/home/flylight/PIPELINE/TERTIARY/
+rm -f $IMAGEJ_MACRO
+trap "rm -f $0" 0
+echo "Job complete for $grammar{short_file}"

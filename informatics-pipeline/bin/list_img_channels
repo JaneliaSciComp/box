@@ -1,0 +1,252 @@
+#!/usr/bin/perl
+
+#use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5';
+#use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5/lib64/perl5/5.8.5/x86_64-linux-thread-multi';
+use Zeiss::LSM;
+
+my $file = $ARGV[0]
+  || &terminateProgram('You must enter a filename');
+&terminateProgram('Cannot read file') unless (-r $file);
+my $lsm;
+my $DEBUG = $ARGV[1] || 0;
+eval { $lsm = new Zeiss::LSM({stack => $file}); };
+&terminateProgram($@) if ($@);
+my $x = $lsm->cz_private->VoxelSizeX*1e6;
+my $y = $lsm->cz_private->VoxelSizeY*1e6;
+my $z = $lsm->cz_private->VoxelSizeZ*1e6;
+
+# Get number of channels
+my %channel;
+$channel{$_->name} = $_->color foreach ($lsm->getChannels);
+my $channel_num = keys %channel;
+print "Channels: $channel_num\n" if ($DEBUG);
+
+my %channel_lookup;
+print "Assigning channel names from lsm->getChannels\n" if ($DEBUG);
+foreach my $key (keys %channel) { 
+    my ($dcn,$tn) = split(/\-/,$key);
+    print "  $dcn -> $key\n" if ($DEBUG);
+    $channel_lookup{$dcn} = $key;
+}
+print "\n" if ($DEBUG);
+
+my %is_pattern_510;
+$is_pattern_510{'BP 505-530'} = 1;
+$is_pattern_510{'BP 505-550'} = 1;
+$is_pattern_510{'LP 505'} = 1;
+my %is_ref_510;
+$is_ref_510{'BP 575-615'} = 1;
+$is_ref_510{'LP 575'} = 1;
+$is_ref_510{'LP 650'} = 1; 
+
+my @t = $lsm->getTracks;
+my ($patt_chan,$ref_chan,$red_chan,$green_chan,$blue_chan);
+my $is_710 = 0;
+foreach my $t (@t) {
+  next if (lc($t->{TRACK_ENTRY_NAME}) =~ /bleach/); #may need to replace this  
+  print "$t->{TRACK_ENTRY_NAME}\n" if ($DEBUG);
+  foreach ($t->getDetectionchannels) {
+    $den = $_->{DETCHANNEL_DETECTION_CHANNEL_NAME};
+    $dfn = $_->{DETCHANNEL_FILTER_NAME};
+    $desws = $_->{DETCHANNEL_ENTRY_SPI_WAVELENGTH_START};
+    $deswe = $_->{DETCHANNEL_ENTRY_SPI_WAVELENGTH_END};
+    if ($DEBUG) {
+      print "  Channel name: $_->{DETCHANNEL_DETECTION_CHANNEL_NAME}\n";
+      print "    Filter name: $_->{DETCHANNEL_FILTER_NAME}\n";
+      print "    Wavelength start: $desws\n";
+      print "    Wavelength end: $deswe\n";
+      print "    Dye name: $_->{DETCHANNEL_ENTRY_DYE_NAME}\n";
+    }
+    $channel_name =  $channel_lookup{$den};
+    unless ($channel_name) {
+      print "Error: Channel name detection error!\n";
+      exit;
+    }
+    print "    Translated channel name: $channel_name\n" if ($DEBUG);
+    $dfn = '' if (lc($dfn) eq "none");
+    if ($dfn) {
+      #510 Image
+      print "    DFN: $dfn\n" if ($DEBUG);
+      if ($is_pattern_510{$dfn}) {
+        $patt_chan = $channel_name unless ($patt_chan);
+      }
+      elsif ($is_ref_510{$dfn}) {
+        $ref_chan = $channel_name unless ($ref_chan);
+      }
+    }
+    else {
+      #710 Image
+      if ($deswe > 600) {
+        $ref_chan = $channel_name;
+      }
+      elsif (($desws >= 485) && ($deswe <= 580)) {
+        $patt_chan = $channel_name;
+      }
+      $is_710 = 1;
+    }
+    if (($patt_chan) && ($ref_chan)) {
+      print "Both channels assigned\n" if ($DEBUG);
+      last;
+    }
+  }
+}
+
+if ($DEBUG) {
+  print "pattern: $patt_chan\n";
+  print "reference: $ref_chan\n";
+}
+
+if (!$patt_chan && !$ref_chan) {
+  # fail safe for fubar
+  $patt_chan = "Ch1-T1";
+  $ref_chan = "Ch2-T2";
+  if ($DEBUG) {
+    print "pattern: $patt_chan\n";
+    print "reference: $ref_chan\n";
+  }
+}
+
+my $tmp_chan = $ref_chan;
+my($chan) = $tmp_chan =~ /^(.+)-?/;
+my $num = 0;
+my $ref_chan_num = 0;
+foreach my $t (@t) {
+  foreach ($t->getDatachannels) {
+    if ($chan eq $_->DATACHANNEL_ENTRY_NAME) {
+      $ref_chan_num = $num;
+      last;
+    }
+    $num++;
+  }
+  last if ($ref_chan_num);
+}
+print "Reference channel index is $ref_chan_num\n" if ($DEBUG);
+
+if ($channel_num >= 3) {    
+  foreach my $key (keys %channel) {    
+    if ( ($key ne $patt_chan) && ($key ne $ref_chan) ) {
+      $blue_chan = $key;
+    }
+  }
+  print "$ref_chan\t$patt_chan\t$blue_chan\t$ref_chan_num\n";
+}
+elsif ($channel_num == 2) {
+  $blue_chan = $ref_chan;
+  print "$ref_chan\t$patt_chan\t$blue_chan\t$ref_chan_num\n";
+}
+elsif ($channel_num == 1) {
+  $blue_chan = $ref_chan;
+  $patt_chan = $ref_chan;
+  print "$ref_chan\t$patt_chan\t$blue_chan\t$ref_chan_num\n";
+}
+exit;
+
+# Dead code
+my ($red, $green, $blue);
+my $reference;
+if (exists($channel{'Ch4-T2'}) && exists($channel{'Ch3-T1'})) {    
+    # 2 channel
+    $red = 'Ch4-T2';
+    $green = 'Ch3-T1';
+    $blue = 'Ch4-T2';
+    
+}
+elsif (exists($channel{'Ch1-T1'}) && exists($channel{'Ch2-T2'})) {
+    # 2 channel
+    $red = 'Ch1-T1';
+    $green = 'Ch2-T2';
+    $blue = 'Ch1-T1';
+}
+elsif (exists($channel{'Ch1-T2'}) && exists($channel{'Ch2-T1'})) {
+    #LSM510
+    # 2 channel
+    $red = 'Ch1-T2';
+    $green = 'Ch2-T1';
+    $blue = 'Ch1-T2'
+}
+elsif (exists($channel{'Ch3-T1'}) && exists($channel{'Ch2-T2'})) {
+  # 2 channel green = blue as in the chacrm3-1.imj_tmpl
+  $red = 'Ch3-T1';
+  $green = 'Ch2-T2';
+  $blue = 'Ch2-T2';
+  
+}
+elsif (exists($channel{Ch1}) && exists($channel{Ch2})) {
+    $red = 'Ch1';
+    $green = 'Ch2';
+    $blue = 'Ch1';
+}
+elsif (exists($channel{'C=0'}) && exists($channel{'C=1'})) {
+    $red = 'C=0';
+    $green = 'C=1';
+    $blue = 'C=0';
+}
+elsif (exists($channel{'Ch4-T2'}) && exists($channel{'Ch3-T1'})
+       && exists($channel{'Ch2-T3'})) {
+    # 3 channel
+    $red = 'Ch4-T2';
+    $green = 'Ch3-T1';
+    $blue = 'Ch2-T3';
+}
+elsif (exists($channel{'Ch3-T2'}) && exists($channel{'Ch2-T1'})
+       && exists($channel{'Ch1-T3'})) {
+    $red = 'Ch3-T2';
+    $green = 'Ch2-T1';
+    $blue = 'Ch1-T3';
+}
+elsif (exists($channel{'Ch3-T1'}) && exists($channel{'Ch2-T3'})
+       && exists($channel{'Ch4-T2'})) {
+    $red = 'Ch3-T1';
+    $green = 'Ch2-T3';
+    $blue = 'Ch4-T2';
+}
+elsif (exists($channel{'Ch2-T2'}) && exists($channel{'ChS1-T1'})) {
+    # LSM710
+    # 2 channel
+    $red = 'Ch2-T2';
+    $green = 'ChS1-T1';
+    $blue = 'Ch2-T2'; # blue equals red for 2 channel images
+    
+}
+else {
+  &terminateProgram('Error could not find channel assignments for '
+                    . join(',',sort keys %channel) . " on $file");
+}
+
+print "$red\t$green\t$blue\n";
+
+exit;
+
+#my($chan) = $reference =~ /^(.+)-/;
+#my @t = $lsm->getTracks;
+#my $num = 0;
+#my $chan_num = '';
+#foreach my $t ($lsm->getTracks) {
+#  foreach ($t->getDatachannels) {
+#    if ($chan eq $_->DATACHANNEL_ENTRY_NAME) {
+#      $chan_num = $num;
+#      last;
+#    }
+#    $num++;
+#  }
+#  last if ($chan_num);
+#}
+#print "$chan_num $x $y $z\n";
+#&terminateProgram();
+
+
+# ****************************************************************************
+# * Subroutine:  terminateProgram                                            *
+# * Description: This routine will gracefully terminate the program. If a    *
+# *              message is passed in, we exit with a code of -1. Otherwise, *
+# *              we exit with a code of 0.                                   *
+# *                                                                          *
+# * Parameters:  message: the error message to print                         *
+# * Returns:     NONE                                                        *
+# ****************************************************************************
+sub terminateProgram
+{
+  my $message = shift;
+  print STDERR  "$message\n" if ($message);
+  exit(($message) ? -1 : 0);
+}

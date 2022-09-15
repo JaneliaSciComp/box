@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<!-- Grammar file -->
+<grammar>/misc/local/pipeline/grammar/bakerdv.gra</grammar>
+
+<!-- Command files to create -->
+<command_file type="Grid script" in_name="/misc/local/pipeline/template/bakerdv.bash_tmpl" out_name="$grammar{uniqueid}.bash" />
+
+
+<!-- Process flow -->
+
+<step>
+  <name>Exists</name>
+  <description>File exists</description>
+  <action>file_exists</action>
+  <file>$grammar{compressed_mpeg_dir}/$grammar{mpeg_filename}</file>
+  <pass>Found</pass>
+  <fail>Grid</fail>
+</step>
+<step>
+  <name>Found</name>
+  <description>Found</description>
+  <action>bump_counter</action>
+  <counter>Existing_mp4</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Grid</name>
+  <description>Submit generated .bash script to grid</description>
+  <action>grid</action>
+  <qsub_args>-N I$grammar{uniqueid} -pe batch 3 -b y -cwd</qsub_args>
+  <args>./$grammar{grid_script}</args>
+  <stdout>LOGS/$grammar{uniqueid}.stdout</stdout>
+  <stderr>LOGS/$grammar{uniqueid}.stderr</stderr>
+  <pass>Good_submit</pass>
+  <fail>Bad_submit</fail>
+</step>
+<step>
+  <name>Good_submit</name>
+  <description>Bump "submit" counter</description>
+  <action>bump_counter</action>
+  <counter>Submissions</counter>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Bad_submit</name>
+  <action>mail_stack</action>
+  <recipient>umayaml@janelia.hhmi.org</recipient>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

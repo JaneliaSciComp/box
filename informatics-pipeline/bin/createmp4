@@ -1,0 +1,92 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  createmp4
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2007-12-10
+# Description:    This script uses ffmpeg to create a high-quality movie
+#                 from another format.
+# Required resources:
+#   Programs:        ffmpeg
+#   Config files:    NONE
+#   Input files:     (original movie as specified by parameter 1)
+#   Output files:    (resultant .mp4 as specified by optional parameter 2)
+#                    (log and monitor files - normally transient)
+#
+#                               REVISION LOG
+# ----------------------------------------------------------------------------
+# | revision | name            | date    | description                       |
+# ----------------------------------------------------------------------------
+#     1.0     Rob Svirskas      07-12-10  Initial version
+# ****************************************************************************
+
+if [ -z "$1" ]
+then
+  echo "usage: createmp4 input [output] [scratchdir]"
+  echo "  - If not specified, [output] defaults to the input file name with"
+  echo "    the extension replaced with .mp4"
+  echo "  - If not specified, [scratchdir] defaults to /tmp. Scratch files"
+  echo "    are deleted unless the program terminates with an error."
+  exit -1
+fi
+
+if [ -z "$3" ]
+then
+  workdir=/tmp
+else
+  workdir=$3
+fi
+
+# Get base filename
+base=`echo $1 | sed 's/\.[^.]*$//'`
+if [ -n "$2" ]
+then
+  outfile=$2
+else
+  outfile=$base.mp4
+fi
+base=`basename $base`
+logbase=$workdir/$base-$$
+# ffmpeg logfile
+logfile=$logbase-0.log
+monfile=$logbase.ffmpeg
+
+# Use newer version of ffmpeg
+#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/ffmpeg/lib
+
+# Pass 1
+#echo "Processing $1 (pass 1)"
+#ffmpeg -y -pass 1 -passlogfile $logbase -i $1 $outfile &>$monfile
+#STATUS=$?
+#if [ $STATUS != 0 ]
+#then
+#  echo "Error in pass 1 ($STATUS)"
+#  exit 1
+#fi
+#echo "Produced $logfile"
+# Pass 2
+echo "Processing $1 (pass 2)"
+ffmpeg -y -i $1 -r 7 -b 2000000 $outfile &>$monfile
+STATUS=$?
+if [ $STATUS != 0 ]
+then
+  echo "Error in pass 2 ($STATUS)"
+  exit 2
+fi
+
+# Do we actually have a file?
+if [ ! -e $outfile ]
+then
+  echo "$outfile does not exist"
+  exit 2
+fi
+if [ ! -s $outfile ]
+then
+  echo "$outfile is empty"
+  exit 2
+fi
+# We're done
+#rm -f $logfile $monfile
+rm -f $monfile
+echo "Created $outfile"
+exit

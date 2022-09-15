@@ -1,0 +1,67 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  tiff.bash_tmpl
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-02-11
+# Description:    After processing, this shell script template will create
+#                 a TIFF file from each LSM.
+# Required resources:
+#   Programs:     ImageJ
+#                 clustermakemov
+# Parameters:     $1: ImageJ macro path
+# ****************************************************************************
+
+# Required resources
+BFCONVERT="/usr/local/java/jre/bin/java -mx1024m -cp /usr/local/ImageJ/plugins/loci_tools.jar loci.formats.tools.ImageConverter"
+GMCONVERT='/misc/local/pipeline/bin/lsm2tiff';
+GMTAG='/misc/local/pipeline/bin/tiff_tagger';
+
+# Make sure the .lsm file exists
+if [ ! -e $grammar{lsm_dir}/$grammar{lsm_file} ]
+then
+  echo -e "Error: image $grammar{lsm_dir}/$grammar{lsm_file} does not exist"
+  exit -1
+fi
+
+# Create work product directories as needed
+echo "Creating work product directories"
+for THISDIR in $grammar{secdata_dirs}
+do
+  if [ ! -e $THISDIR ]
+  then
+    mkdir -p -m 755 $THISDIR
+    if [ ! -e $THISDIR ]
+    then
+      echo -e "Could not create $THISDIR"
+      exit -1
+    fi
+  fi
+done
+
+# Create OME-TIFF file and link
+#echo "Creating OME-TIFF file $grammar{ome_file}"
+#$BFCONVERT -debug $grammar{lsm_dir}/$grammar{lsm_file} $grammar{tiff_dir}/$grammar{ome_file}
+#if [ -e $grammar{tiff_dir}/$grammar{ome_file} ]
+#then
+#  ln -sf $grammar{tiff_dir}/$grammar{ome_file} $grammar{tiff_link}/$grammar{ome_file}
+#else
+#  echo "Error: no TIFF at $grammar{tiff_dir}/$grammar{ome_file}"
+#  exit -1
+#fi
+
+# Create EWM file and link
+echo "Creating EWM-TIFF file $grammar{ewm_file}"
+$GMCONVERT $grammar{lsm_dir}/$grammar{lsm_file} $grammar{tiff_dir}/$grammar{ewm_file}
+if [ -e $grammar{tiff_dir}/$grammar{ewm_file} ]
+then
+  $GMTAG -f $grammar{tiff_dir}/$grammar{ewm_file}
+  ln -sf $grammar{tiff_dir}/$grammar{ewm_file} $grammar{tiff_link}/$grammar{ewm_file}
+else
+  echo "Error: no TIFF at $grammar{tiff_dir}/$grammar{ewm_file}"
+  exit -1
+fi
+
+# We're done! Delete this shell script.
+trap "rm -f $0" 0
+echo "Job complete for $grammar{short_file}"

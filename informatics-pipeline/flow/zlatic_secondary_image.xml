@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<!-- Grammar file -->
+<grammar>/misc/local/pipeline/grammar/zlatic_peripheral.gra</grammar>
+
+<!-- Command files to create -->
+<command_file type="ImageJ" in_name="/misc/local/pipeline/template/zlatic_secondary_image.imj_tmpl" out_name="$grammar{short_file}.txt" />
+<command_file type="Grid script" in_name="/misc/local/pipeline/template/zlatic_secondary_image.bash_tmpl" out_name="$grammar{short_file}.bash" />
+
+<!-- Process flow -->
+<step>
+  <name>Projection_check</name>
+  <description>Check for completed projection</description>
+  <action>file_exists</action>
+  <file>$grammar{projection_dir}/$grammar{projection_all_file}</file>
+  <pass>Found_projection</pass>
+  <fail>Grid</fail>
+</step>
+<step>
+  <name>Found_projection</name>
+  <description>Bump "found" counter</description>
+  <action>bump_counter</action>
+  <counter>Projections_found</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Grid</name>
+  <description>Submit generated .bash script to grid</description>
+  <action>grid</action>
+  <qsub_args>-N I$grammar{short_file} -pe batch 4 -b y -cwd</qsub_args>
+  <args>./$grammar{short_file}.bash $grammar{short_file}.txt</args>
+  <stdout>LOGS/$grammar{short_file}.stdout</stdout>
+  <stderr>LOGS/$grammar{short_file}.stderr</stderr>
+  <pass>Good_submit</pass>
+  <fail>Bad_submit</fail>
+</step>
+<step>
+  <name>Good_submit</name>
+  <description>Bump "submit" counter</description>
+  <action>bump_counter</action>
+  <counter>Submissions</counter>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Bad_submit</name>
+  <action>mail_stack</action>
+  <recipient>umayaml@janelia.hhmi.org</recipient>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

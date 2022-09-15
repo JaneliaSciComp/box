@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<!-- Grammar file -->
+<grammar>/misc/local/pipeline/grammar/flybowlctrax.gra</grammar>
+
+<!-- Command files to create -->
+<command_file type="grid script" in_name="/misc/local/pipeline/template/flybowlctrax_sl63.bash_tmpl" out_name="$grammar{unique_id}.bash" />
+
+<!-- Process flow -->
+
+<step>
+  <name>Exists</name>
+  <description>File exists</description>
+  <action>file_exists</action>
+  <file>$grammar{checkfile}</file>
+  <pass>Found</pass>
+  <fail>NotFound</fail>
+</step>
+
+<step>
+  <name>Found</name>
+  <description>Found</description>
+  <action>bump_counter</action>
+  <counter>Existing_Ann</counter>
+  <pass>Cleanup</pass>
+</step>
+
+<step>
+  <name>NotFound</name>
+  <description>NotFound</description>
+  <action>bump_counter</action>
+  <counter>Run_Ctrax</counter>
+  <pass>Grid</pass>
+</step>
+
+<step>
+  <name>Grid</name>
+  <description>Submit generated .bash script to grid</description>
+  <action>grid</action>
+  <qsub_args>-N ctrax-$grammar{unique_id} -l sl63 -b y -cwd</qsub_args>
+  <args>./$grammar{grid_script}</args>
+  <stdout>LOGS/CTRAX/$grammar{unique_id}.stdout</stdout>
+  <stderr>LOGS/CTRAX/$grammar{unique_id}.stderr</stderr>
+  <pass>Good_submit</pass>
+  <fail>Bad_submit</fail>
+</step>
+<step>
+  <name>Good_submit</name>
+  <description>Bump "submit" counter</description>
+  <action>bump_counter</action>
+  <counter>Submissions</counter>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Bad_submit</name>
+  <action>mail_stack</action>
+  <recipient>weaverc10@janelia.hhmi.org</recipient>
+  <pass>Terminal</pass>
+</step>
+
+<step>
+  <name>Cleanup</name>
+  <action>null</action>
+</step>
+
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+
+
+</config>

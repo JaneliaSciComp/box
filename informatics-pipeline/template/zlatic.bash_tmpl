@@ -1,0 +1,90 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  zlatic.bash_tmpl
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2009-10-02
+# Description:    Script to run choreography
+# Required resources:
+#   Programs:     Choro.jar
+#                 
+# Parameters:     NONE
+# ****************************************************************************
+
+JAVA='/usr/local/java/bin/java'
+CHORE='/usr/local/MWT/Chore2.jar';
+
+echo "Repairing .blob files"
+perl /misc/local/pipeline/bin/repair_blob '$grammar{source_dir}'
+
+if [ 't2' == '$grammar{tracker}' ];
+then
+  PV=0.056;
+elif [ 't4' == '$grammar{tracker}' ];
+then
+  PV=0.0899;
+elif [ 't5' == '$grammar{tracker}' ];
+then
+  PV=0.0899;
+elif [ 't6' == '$grammar{tracker}' ];
+then
+  PV=0.0899;
+else
+  PV=0.03;
+fi
+
+mkdir -p $grammar{dest_dir}
+
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -o p -O persistence -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for persistence"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -o N -O goodnumber --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for goodnumber"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -o e1234 -O area -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for area"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -o s1234 -O speed -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for speed"
+$JAVA -jar $CHORE -t 5 -s 0.85 -M 1 -p $PV -o s1234 -O speed085 -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for speed085"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -o r1234 -O crabspeed -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for crabspeed"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -S -o b1234 -O biasS -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for biasS"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -o b1234 -O bias -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for bias"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -S -o d1234 -O dirS -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for dirS"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -o d1234 -O dir -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for dir"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -o x1234 -O x -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for x"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -o y1234 -O y -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for y"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -S -o u1234 -O vel_x -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for vel_x"
+$JAVA -jar $CHORE -t 5 -s 0.85 -M 1 -p $PV -S -o u1234 -O vel_x085 -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for vel_x085"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -S -o v1234 -O vel_y -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for vel_y"
+$JAVA -jar $CHORE -t 5 -s 0.85 -M 1 -p $PV -S -o v1234 -O vel_y085 -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for vel_y085"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -S -o o1234 -O orientation -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for orientation"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV --plugin Respine::0.23 -o m1234 -O midline -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for midline"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV --plugin Respine::0.23 -o M1234 -O morpwidth -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for morpwidth"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV --plugin Respine::0.23 -o k1234 -O kink -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for kink"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV --plugin Respine::0.23 -o c1234 -O curve -N all --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for curve"
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV --plugin Respine::0.23 --plugin Extract::spine::outline --target $grammar{dest_dir} $grammar{source_dir}
+echo "Completed choreography for spine"
+
+# $JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -S -o rsd1234 -O roll -N all $grammar{source_dir}
+# $JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -o xy1234 -O xy -N all $grammar{source_dir}
+# $JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV -S -o uv1234 -O vel_xy -N all $grammar{source_dir}
+
+# We're done! Delete this shell script.
+echo "Will delete $0"
+trap "rm -f $0" 0
+echo "Job complete"

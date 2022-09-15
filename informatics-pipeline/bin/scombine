@@ -1,0 +1,50 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  scombine.bash
+# Written by:     Steve Matyas
+# Revision level: 1.0
+# Date released:  2011-03-03
+# Description:    Script to combine the <measurement>.r for each run within a protocol directory 
+# Required resources: NONE
+#                 
+# Parameters:     NONE
+# ****************************************************************************
+
+function printUsageAndExit {
+  echo
+  echo "USAGE: `basename $0` <per-protocol-dir> <measurement>"
+  echo
+  echo -e "\twhere <per-protocol-dir> is the path to the .../pipeline/choreography-results/tracker/line@effector/protocol/"
+  echo -e "\twhere <measurement> is a valid measurement from /groups/zlatic/home/zlaticm/zcombine_measurements.txt"
+  exit 1
+}
+
+if [[ $# < 2 ]]; then
+  printUsageAndExit
+fi
+
+PER_PROTOCOL_DIR="$1"
+MEASUREMENT="$2"
+
+for J in `find "${PER_PROTOCOL_DIR}" -type f -name "*.${MEASUREMENT}.r"`
+  do
+      Rfilename=$(echo ${J} | xargs basename | cut -d \@ -f 1 --complement)
+      
+      DPipeline=$(echo ${J} | cut -d \/ -f 9- --complement | xargs dirname)
+      echo -e "\t\tDPipline=${DPipeline}"
+      DSuffix=$(echo ${J} | cut -d \/ -f 9- )
+      echo -e "\t\tDSuffix=${DSuffix}"
+      DCombiner="${DPipeline}/combiner-results/${DSuffix}"
+      DCombiner=`dirname "$DCombiner"`
+      DCombiner=`dirname "$DCombiner"`
+      echo -e "\t\tDCombiner=${DCombiner}"
+
+      Dname="${DCombiner}/$(echo $I | cut -d \/ -f 10-)"
+      echo -e "\t\tDname=${Dname}"
+      mkdir -p "$Dname"
+
+      CombinedRfile="${Dname}${Rfilename}"
+      echo -e "\t\tCombinedRfile=${CombinedRfile}"
+      cat "$J" >> "$CombinedRfile"
+      rm -f "$J" 
+  done

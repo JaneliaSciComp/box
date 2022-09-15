@@ -1,0 +1,233 @@
+#!/usr/bin/perl
+
+# Output LSM metadata (tab-delimited):
+#   Red channel
+#   Green channel
+#   Blue channel
+#   Reference channel index
+#   X voxel size
+#   Y voxel size
+#   Z voxel size
+
+# Perl built-ins
+use strict;
+use warnings;
+use Getopt::Long;
+
+# JFRC
+use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5';
+use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5/lib64/perl5/5.8.5/x86_64-linux-thread-multi';
+use Zeiss::LSM;
+
+# ****************************************************************************
+# * Constants                                                                *
+# ****************************************************************************
+# 510 channels are determined by the filter
+my %IS_PATTERN_510 = map { $_ => 1 } ('BP 505-530','BP 505-550','LP 505');
+my %IS_REF_510 = map { $_ => 1 } ('BP 575-615','LP 575','LP 650');
+my %AF = map { $_ => 'Alexa Fluor '.$_ } qw(488 547 568 594 633 647);
+$AF{'594w'} = 'Alexa Fluor 594 (white)';
+
+# ****************************************************************************
+# * Global variables                                                         *
+# ****************************************************************************
+# Command-line parameters
+my $METHOD = 'channel';
+my $DEBUG = 0;
+
+# ****************************************************************************
+# * Main                                                                     *
+# ****************************************************************************
+
+# Get the command-line parameters
+GetOptions('file=s'    => \my $FILE,
+           'method=s'  => \$METHOD,
+           debug       => \$DEBUG)
+or exit(-1);
+
+# Parse LSM file
+die('You must enter a filename') unless ($FILE);
+die('Cannot read file') unless (-r $FILE);
+my $lsm;
+eval { $lsm = new Zeiss::LSM({stack => $FILE}); };
+&terminateProgram($@) if ($@);
+my $x = $lsm->cz_private->VoxelSizeX*1e6;
+my $y = $lsm->cz_private->VoxelSizeY*1e6;
+my $z = $lsm->cz_private->VoxelSizeZ*1e6;
+
+# Get number of channels
+my %channel;
+$channel{$_->name} = $_->color foreach ($lsm->getChannels);
+my $num_channels = keys %channel;
+print "Channels: $num_channels\n" if ($DEBUG);
+
+my %channel_lookup;
+print "Assigning channel names from lsm->getChannels\n" if ($DEBUG);
+foreach my $key (keys %channel) { 
+    my($dcn,$tn) = split(/\-/,$key);
+    print "  $dcn -> $key\n" if ($DEBUG);
+    $channel_lookup{$dcn} = $key;
+}
+print "\n" if ($DEBUG);
+
+my @t = $lsm->getTracks;
+my ($patt_chan,$ref_chan,$red_chan,$green_chan,$blue_chan);
+my $is_710 = 0;
+my %channel_dye = ();
+foreach my $t (@t) {
+  next if (lc($t->{TRACK_ENTRY_NAME}) =~ /bleach/); # Ignore bleach track
+  print "$t->{TRACK_ENTRY_NAME}\n" if ($DEBUG);
+  foreach ($t->getDetectionchannels) {
+    my $den = $_->{DETCHANNEL_DETECTION_CHANNEL_NAME};
+    my $dfn = $_->{DETCHANNEL_FILTER_NAME};
+    my $desws = $_->{DETCHANNEL_ENTRY_SPI_WAVELENGTH_START};
+    my $deswe = $_->{DETCHANNEL_ENTRY_SPI_WAVELENGTH_END};
+    my $dye = $_->{DETCHANNEL_ENTRY_DYE_NAME};
+    if ($DEBUG) {
+      print "  Channel name: $den\n";
+      print "    Filter name: $dfn\n";
+      print "    Wavelength start: $desws\n";
+      print "    Wavelength end: $deswe\n";
+      print "    Dye name: $dye\n";
+    }
+    my $channel_name =  $channel_lookup{$den};
+    unless ($channel_name) {
+      print "Error: Channel name detection error!\n";
+      exit(-1);
+    }
+    print "    Translated channel name: $channel_name\n" if ($DEBUG);
+    $dfn = '' if (lc($dfn) eq "none");
+    if ($dfn) {
+      #510 Image
+      print "    DFN: $dfn\n" if ($DEBUG);
+      if ($IS_PATTERN_510{$dfn}) {
+        $patt_chan = $channel_name unless ($patt_chan);
+      }
+      elsif ($IS_REF_510{$dfn}) {
+        $ref_chan = $channel_name unless ($ref_chan);
+      }
+    }
+    else {
+      #710 Image
+      $is_710 = 1;
+      if ($METHOD eq 'channel') {
+        if ($channel_name eq 'Reference') {
+          $ref_chan = $channel_name;
+        }
+        elsif ($deswe > 600) {
+          $ref_chan = $channel_name;
+        }
+        elsif (($desws >= 485) && ($deswe <= 580)) {
+          $patt_chan = $channel_name;
+        }
+      }
+      else {
+        $channel_dye{$den} = $dye;
+      }
+    }
+    if (($patt_chan) && ($ref_chan)) {
+      print "Both channels assigned\n" if ($DEBUG);
+      last;
+    }
+  }
+}
+
+my $ref_chan_num = 0;
+($ref_chan,$patt_chan) = &getColorByDye($num_channels,\%channel_dye)
+  if (scalar keys %channel_dye);
+if ($DEBUG) {
+  print "pattern: $patt_chan\n";
+  print "reference: $ref_chan\n";
+}
+
+if (!$patt_chan && !$ref_chan) {
+  # fail safe for fubar
+  $patt_chan = "Ch1-T1";
+  $ref_chan = "Ch2-T2";
+  if ($DEBUG) {
+    print "pattern: $patt_chan\n";
+    print "reference: $ref_chan\n";
+  }
+}
+
+my $tmp_chan = $ref_chan;
+my($chan) = $tmp_chan =~ /^(.+)-?/;
+my $num = 0;
+foreach my $t (@t) {
+  foreach ($t->getDatachannels) {
+    if ($chan eq $_->DATACHANNEL_ENTRY_NAME) {
+      $ref_chan_num = $num;
+      print "Found reference channel $chan at index $num\n" if ($DEBUG);
+      last;
+    }
+    $num++;
+  }
+  last if ($ref_chan_num);
+}
+print "Reference channel index is $ref_chan_num\n" if ($DEBUG);
+
+if ($num_channels >= 3) {    
+  foreach my $key (keys %channel) {    
+    if ( ($key ne $patt_chan) && ($key ne $ref_chan) ) {
+      $blue_chan = $key;
+    }
+  }
+}
+elsif ($num_channels == 2) {
+  $blue_chan = $ref_chan;
+}
+elsif ($num_channels == 1) {
+  $blue_chan = $ref_chan;
+  $patt_chan = $ref_chan;
+}
+print "$ref_chan\t$patt_chan\t$blue_chan\t$ref_chan_num\t$x\t$y\t$z\n";
+exit(0);
+
+
+sub getColorByDye
+{
+  my($ref,$patt);
+  my($num_channels,$cd_ref) = @_;
+  if (3 == $num_channels) {
+    if ($cd_ref->{Ch1} eq $AF{488}
+        && (($cd_ref->{Ch2} eq $AF{633}) || ($cd_ref->{Ch2} eq $AF{647}))
+        && (($cd_ref->{ChS1} eq $AF{568}) || ($cd_ref->{ChS1} eq 'DY-547'))) {
+      ($ref,$patt) = ('Ch1-T1','Ch2-T1');
+    }
+    if ($cd_ref->{Ch1} eq $AF{488}
+        && (($cd_ref->{Ch2} eq $AF{633}) || ($cd_ref->{Ch2} eq $AF{647}))
+        && (($cd_ref->{ChS1} eq $AF{568}) || ($cd_ref->{ChS1} eq 'Cy3'))) {
+      ($ref,$patt) = ('Ch1-T1','Ch2-T1');
+    }
+  }
+  elsif (2 == $num_channels) {
+    if (exists $cd_ref->{Ch2}) {
+      if ($cd_ref->{Ch1} eq $AF{488} && $cd_ref->{Ch2} eq $AF{'594w'}) {
+        ($ref,$patt) = ('Ch1','Ch2');
+      }
+      elsif ($cd_ref->{Ch1} eq $AF{488} && $cd_ref->{Ch2} eq $AF{594}) {
+        ($ref,$patt) = ('Ch1','Ch2');
+      }
+      elsif ($cd_ref->{Ch1} eq $AF{488} &&
+             (($cd_ref->{Ch2} eq $AF{633}) || ($cd_ref->{Ch2} eq $AF{647}))) {
+        ($ref,$patt) = ('Ch1','Ch2');
+      }
+      elsif ($cd_ref->{Ch1} eq $AF{488} && $cd_ref->{Ch2} eq $AF{568}) {
+        ($ref,$patt) = ('Ch2','Ch1');
+      }
+    }
+    elsif (exists $cd_ref->{ChS1}) {
+      if ($cd_ref->{Ch1} eq $AF{488}
+          && (($cd_ref->{ChS1} eq $AF{568}) || ($cd_ref->{ChS1} eq 'Cy3'))) {
+        ($ref,$patt) = ('ChS1','Ch1');
+      }
+    }
+    elsif (exists $cd_ref->{ChS2}) {
+      if ($cd_ref->{Ch1} eq $AF{488} && $cd_ref->{ChS2} eq $AF{594}) {
+        ($ref,$patt) = ('Ch1','ChS2');
+      }
+    }
+  }
+  die("Could not assign channel colors") unless ($ref && $patt);
+  return($ref,$patt);
+}

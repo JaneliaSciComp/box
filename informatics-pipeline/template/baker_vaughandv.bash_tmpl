@@ -1,0 +1,38 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  baker_vaughandv.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    Script to convert Alex Vaughan Baker Lab dv video files to mp4 videofiles
+# Required resources:
+#   Programs:     ffmpeg
+#                 
+# Parameters:     NONE
+# ****************************************************************************
+
+COMPRESSEDDIR="$grammar{compressed_mpeg_dir}";
+
+if [ ! -e "$COMPRESSEDDIR" ]
+then
+  mkdir -p -m 755 "$COMPRESSEDDIR"
+  if [ ! -e "$COMPRESSEDDIR" ]
+  then
+    echo -e "Could not create $COMPRESSEDDIR"
+    exit -1
+  fi
+fi
+
+DVFILEPATH="$grammar{dvfilepath}"
+MP4FILEPATH="$grammar{compressed_mpeg_dir}/$grammar{mpeg_filename}"
+
+ffmpeg -i "$DVFILEPATH" -b 2000k -r 30 -deinterlace "$MP4FILEPATH"
+if [ ! -e "$MP4FILEPATH" ]
+then
+    echo -e "Could not create $MP4FILEPATH"
+    exit -1
+fi
+
+# We're done! Delete this shell script.
+trap "rm -f $0" 0
+echo "Job complete"

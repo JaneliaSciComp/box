@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Program locations:
+FIJI="/usr/local/Fiji/ImageJ-linux64 --headless -batch "
+ZPROJECT='/misc/local/pipeline/fiji/project_amira.ijm'
+
+echo "Job started at" `date` "on" `hostname`
+
+# Z projection
+echo "+----------------------------------------------------------------------+"
+echo "| Running Z projection                                                 |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+# xvfb-run --auto-servernum --server-num=200 $FIJI -macro $ZPROJECT "$grammar{path}"
+$FIJI -macro $ZPROJECT "$grammar{path}"
+STOP=`date '+%F %T'`
+
+echo "Job completed at " `date`

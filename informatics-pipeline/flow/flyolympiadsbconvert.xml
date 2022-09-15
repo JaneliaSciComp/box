@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<!-- Grammar file -->
+<grammar>/misc/local/pipeline/grammar/flyolympiadsbconvert.gra</grammar>
+
+<!-- Command files to create -->
+<command_file type="bash script" in_name="/misc/local/pipeline/template/flyolympiadsbconvert.bash_tmpl" out_name="$grammar{unique_id}.bash" />
+
+<!-- Process flow -->
+
+<step>
+  <name>Exists</name>
+  <description>File exists</description>
+  <action>file_exists</action>
+  <file>$grammar{compressed_sbfmf_path}</file>
+  <pass>Found</pass>
+  <fail>NotFound</fail>
+</step>
+
+<step>
+  <name>Found</name>
+  <description>Found</description>
+  <action>bump_counter</action>
+  <counter>Existing_sbfmf</counter>
+  <pass>Cleanup</pass>
+</step>
+
+<step>
+  <name>NotFound</name>
+  <description>NotFound</description>
+  <action>bump_counter</action>
+  <counter>Run_Convert</counter>
+  <pass>Add_item</pass>
+</step>
+
+<step>
+  <name>Add_item</name>
+  <description>Append found item to mail message</description>
+  <action>mail_message</action>
+  <message>The tube avi files in $grammar{compressed_sbfmf_path} have been submitted for sbfmf conversion:</message>
+  <recipient>weaverc10@janelia.hhmi.org</recipient>
+  <pass>RunSBConvert</pass>
+</step>
+
+<step>
+  <name>RunSBConvert</name>
+  <description>Execute generated .bash script</description>
+  <action>bash</action>
+  <args>./$grammar{bash_script}</args>
+  <stdout>LOGS/SBCONVERT/$grammar{unique_id}.stdout</stdout>
+  <stderr>LOGS/SBCONVERT/$grammar{unique_id}.stderr</stderr></step>
+
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

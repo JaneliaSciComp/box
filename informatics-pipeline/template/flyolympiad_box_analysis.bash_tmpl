@@ -1,0 +1,42 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flyolympiad_box_analysis.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2010-2-08
+# Description:    Script to run analysis on Fly Olympiad experiment
+# Required resources:
+#   Programs:     analyze experiment
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+# 
+
+if [ ! -d "$grammar{top_analysis_dir}" ]
+then
+    mv "$grammar{load_dir}"  "$grammar{top_analysis_dir}";
+fi
+
+# Run Michael Reiser's analysis code.
+source ~/.bashrc;
+source /usr/local/matutil/mcr_select.sh 2011a
+/groups/flyprojects/home/olympiad/bin/analyze_experiment --reanalyze "$grammar{top_analysis_dir}";
+
+# Create PNG versions of all of the PDFs.
+cd "$grammar{output_analysis_dir}";
+/usr/local/ImageMagick/bin/mogrify -density 100 -format png *.pdf;
+chmod g+w *.png;
+
+# Add a link to the comparison summary to the short cut folder.
+cd "$grammar{comparison_dir}";
+ln -s "$grammar{box_data_comparison}" "$grammar{comparison_pdf_link}";
+
+# Load the analysis data into SAGE.
+/usr/local/python-2.7.3/bin/python /groups/flyprojects/home/olympiad/box/AnalysisLoader/load_analysis.py /groups/flyprojects/home/olympiad/config/SAGE-prod.config "$grammar{top_analysis_dir}";
+
+# cleanup temp
+source /usr/local/matutil/mcr_select.sh clean
+cd ~/;
+trap "rm -f $0" 0;

@@ -1,0 +1,196 @@
+# ****************************************************************************
+# Resource name:  chacrm.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-01-02
+# Description:    This grammar will parse the qualified stack names
+#                 (date/file) for the Rubin Lab's ChaCRM images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: date '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Some aliases to match other labs
+  $data{transformantid} = 'GMR_' . $data{transformantid};
+  $data{line} = $data{transformantid};
+  $data{organ} = $data{area};
+  $data{specimen} = $data{sequencenumber};
+  # Base directories
+  my $BASE = '/groups/flylight/flylight/screen';
+  $data{img_application} = 'rubin-image';
+  $data{designator} = 'rubin-chacrm';
+  my $ORGANIZED = join '/',$BASE,'organizedData';
+  my $SECONDARY = join '/',$BASE,'SecData';
+  my $LINK_SUFFIX = $data{plate} . '/'
+                    . $data{transformantid} . '/' . $data{date};
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $BASE . '/confocalStacks/' . $data{date};
+  $data{lsm_link} = "$ORGANIZED/confocalStacks/" . $LINK_SUFFIX;
+  $data{lsm_file} = $data{source_file} = $data{file};
+  $data{lsm_rel} = join '/',('..')x5,'confocalStacks',$data{date};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{sage_image} = join('/',@data{qw(date source_file)});
+  # Common-structure directories (SecData projections is an outlier)
+  foreach (qw(projection reference registration rotation tiff translation)) {
+    my $dir = join('/',$SECONDARY,($_ . 's'),$data{date});
+    $dir .= "/$no_ext" if (/projection/);
+    my $loc = join('/',($_ . 's'),$data{date});
+    $loc .= "/$no_ext" if (/projection/);
+    $data{$_ . '_dir'} = $dir;
+    $data{$_ . '_loc'} = $loc;
+    $data{$_ . '_link'} = join '/',$ORGANIZED,$_ . 's',$LINK_SUFFIX;
+    $data{$_ . '_rel'} = join '/',('..')x5,'SecData',$loc;
+  }
+  $data{short_file} = $no_ext;
+
+  # Channel Assignments
+  my $list_img_channel_cmd = '/misc/local/pipeline/bin/list_img_channels ' .  $data{lsm_dir} . "/" . $data{lsm_file};
+  my ($red_chan, $green_chan, $blue_chan, $ref_chan_num, $detect);
+  open(CMD, "$list_img_channel_cmd |");
+  my $detect = 0;
+  while (my $output = <CMD>) {
+    chomp($output);
+    unless ($output =~ /Error/) {
+        ($red_chan, $green_chan, $blue_chan, $ref_chan_num) = split(/\t/,$output);
+        $detect = 1;
+    }
+  }
+  close(CMD);
+
+  $data{detect_chan} = $detect;
+  $data{lsm_red_chan} = $red_chan;
+  $data{lsm_green_chan} =  $green_chan;
+  $data{lsm_blue_chan} = $blue_chan;
+
+  #generate a random number
+  my $range = 998;
+  my $minimum = 1;
+  my $random_number = int(rand($range)) + $minimum;
+  $data{random_num} = $random_number;
+
+  # Tissue Orientation
+  my $tissue_orientation = "";
+  my $get_tissue_orientaton_cmd = '/misc/local/pipeline/bin/get_tissue_orientation ' . $data{date} . "/" . $data{lsm_file};
+  open (CMD2, "$get_tissue_orientaton_cmd |");
+  while (my $output = <CMD2>) {
+  	chomp($output);
+  	if ($output) {
+  		$tissue_orientation = $output;
+  	}
+  }
+  close (CMD2);
+  $data{tissue_orientation} = $tissue_orientation;
+  $data{reverse_zstack} = 0;
+  if ($tissue_orientation eq "face_down") {
+  	$data{reverse_zstack} = 1;
+  }
+
+  #is the image part of a tile
+  my $is_tiled = 0;
+  my $is_tiled_cmd = '/misc/local/pipeline/bin/isImageTile ' . $data{date} . "/" . $data{lsm_file};
+  open (CMD3, "$is_tiled_cmd |");
+  while (my $output = <CMD3>) {
+        chomp($output);
+        if ($output) {
+                $is_tiled = $output;
+        }
+  }
+  close (CMD3);
+  $data{is_tiled} = $is_tiled;
+
+  # Projections
+  $data{projection_all_file} = $data{short_file} . '_total.jpg';
+  $data{projection_pattern_file} = $data{short_file} . '_ch2_total.jpg';
+  $data{projection_reference_sum} = $data{short_file} . '_ref_sum.jpg';
+  $data{projection_ref_sum_file} = $data{projection_reference_sum};
+  # Rotations
+  $data{rotation_transient} = $data{short_file} . '.avi';
+  $data{rotation_file} = $data{short_file} . '.r.mp4';
+  # Translations
+  $data{translation_transient} = $data{short_file} . '.avi';
+  $data{translation_file} = $data{short_file} . '.t.mp4';
+  # TIFF and JPG files
+  $data{tiff_file} = $data{short_file} . '.tif';
+  $data{projection_file} = $data{short_file} . '_total.jpg';
+  # Registrations
+  $data{registered_global_raw} = $data{short_file} . '.tif.tmp_GF.raw';
+  $data{registered_global_tiff} = $data{short_file} . '.reg.global.tif';
+  $data{projection_global_registered} = $data{short_file} . '.reg.global.jpg';
+  $data{registered_local_raw} = $data{short_file} . '.tif.tmp_GF_local.raw';
+  $data{registered_local_tiff} = $data{short_file} . '.reg.local.tif';
+  $data{projection_local_registered} = $data{short_file} . '.reg.local.jpg';
+  $data{projection_local_registered_file} = $data{projection_local_registered};
+  $data{registered_loop1_tiff} = $data{short_file} . '.tif.loop1.tif';
+  $data{registered_loop2_tiff} = $data{short_file} . '.tif.loop2.tif';
+  $data{registered_loop2_projection} = $data{short_file} . '.tif.loop2.jpg';
+  $data{registered_quality} = $data{short_file} . '.tif.loop2.tif_matching_quality.csv';
+  # Registration data to index
+  $data{registration_local_tiff_file} = $data{registered_local_tiff};
+  $data{registration_loop2_tiff_file} = $data{registered_loop2_tiff};
+  $data{registration_quality_file} = $data{registered_quality};
+  $data{registration_subject_file} = $data{short_file} . '.tif.loop2.tif_subject.csv';
+  $data{registration_target_file} = $data{short_file} . '.tif.loop2.tif_target.csv';
+  # Link directories
+  $data{link_dirs} = join ' ',@data{map { $_.'_link' }
+      qw(lsm tiff projection reference registration translation rotation)};
+  # Secondary data directories
+  $data{secdata_dirs} = join ' ',@data{map { $_.'_dir' }
+      qw(projection reference registration tiff rotation translation)},$data{link_dirs};
+  $data{secdata_store} = join(',',qw(projection_all projection_local_registered
+                                     projection_pattern projection_ref_sum
+                                     translation registration_local_tiff
+                                     registration_loop2_tiff
+                                     registration_quality registration_subject
+                                     registration_target));
+  $data{substack_store} = join(',',qw(substack_all substack_pattern));
+  $return = { $item[0] => join('/',$data{date},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+stack: labid '_' transformantid '_' sequencenumber '-' flyid '_' datestamp
+       '_' uid
+{
+  my %data = &assign(\%item);
+  my @order = qw(labid transformantid sequencenumber flyid datestamp uid);
+  $return = { $item[0] => join('_',@data{@order[0..2]}) . '-'
+                          . join('_',@data{@order[3..5]}), %data };
+} | <error: illegal stack>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+transformantid: plate '' well '_' vector '_' landing_site
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error: illegal transformant ID>
+
+flyid: gender '' age '' area
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error: illegal fly ID>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+date: /\d{4}(?:0[1-9]|1[012])(?:0[1-9]|[12]\d|3[01])/ | <error: illegal date>
+labid: 'GMR' | <error: illegal lab ID>
+plate: /[1-9][0-9]{0,2}/ | <error: illegal plate>
+well: /[A-H](?:0[1-9]|1[012])/ | <error: illegal well>
+vector: /[A-Z]{2}/ | <error: illegal vector>
+landing_site: /\d{2}/ | <error: illegal landing site>
+sequencenumber: /\d{2,3}/ | <error: illegal sequence number>
+gender: /[mfx]/ | <error: illegal gender>
+age: /[AELPX]\d{2}/ | <error: illegal age>
+area: /[bsv]/ | <error: illegal area>
+datestamp: /C\d{6}/ | <error: illegal datestamp>
+uid: /\d{17}/ | <error: illegal UID>
+extension: 'lsm' | <error: illegal extension>

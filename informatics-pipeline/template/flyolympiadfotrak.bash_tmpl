@@ -1,0 +1,54 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flyolympiadctrax.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    Script to convert Baker Lab dv video files to mp4 videofiles
+# Required resources:
+#   Programs:     ffmpeg
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+# 
+
+if [ ! -d "$grammar{tracked_topdir_path}" ]
+then
+    cd "$grammar{base_dir}"
+    mv "$grammar{topdir}" "$grammar{tracked_path}"
+fi
+
+# Create output dirs
+if [ ! -d "$grammar{tracked_output}" ]
+then
+    mkdir "$grammar{tracked_output}"
+    chmod 775 "$grammar{tracked_output}"
+fi
+
+if [ ! -d "$grammar{tracked_output_expdir}" ]
+then
+    mkdir "$grammar{tracked_output_expdir}"
+    chmod 775 "$grammar{tracked_output_expdir}"
+fi
+
+if [ ! -d "$grammar{tracked_output_expdir_seqtube}" ]
+then
+    mkdir "$grammar{tracked_output_expdir_seqtube}"
+    chmod 775 "$grammar{tracked_output_expdir_seqtube}"
+fi
+
+# run Michael Reiser tracking
+source ~/.bashrc
+source /usr/local/matutil/mcr_select.sh 2008b
+
+# link sbfmf file here
+cd "$grammar{tracked_output_expdir_seqtube}"
+/groups/flyprojects/home/olympiad/bin/fo_trak /groups/flyprojects/home/olympiad/FO_Trak/params_Olympiad.txt "$grammar{sbfmf_annot_path}" "$grammar{tracked_output_expdir_seqtube}"
+
+# cleanup temp
+source /usr/local/matutil/mcr_select.sh clean
+
+cd ~/
+trap "rm -f $0" 0

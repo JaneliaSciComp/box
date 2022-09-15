@@ -1,0 +1,149 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  dickson.bash_tmpl
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2013-05-01
+# Description:    After processing, this shell script template implements the
+#                 image processing flow for the Dickson Lab's GAL4 images.
+#                 If needed, SecData and organizedData directory structures
+#                 are created. ImageJ is used to create work products, and
+#                 links from organizedData to SecData are created.
+# Required resources:
+#   Programs:     ImageJ
+#                 clustermakemov
+# Parameters:     $1: ImageJ macro path
+#                 $2: ImageJ macro path
+# ****************************************************************************
+
+# Required resources
+IMAGEJ="/usr/local/java/jre/bin/java -mx8000m -XX:+AggressiveHeap -jar /usr/local/ImageJ/ij.jar -ijpath /usr/local/ImageJ -batch "
+MAKEMOVIE="/misc/local/pipeline/bin/createmp4"
+
+# Parameters
+if [ ! $1 ]
+then
+  echo "Error: no ImageJ macro specified"
+  exit -1
+fi
+IMAGEJ_MACRO=$1
+IMAGEJ_MACRO2=$2
+
+# Make sure the .lsm file exists
+if [ -e $grammar{lsm_dir}/$grammar{lsm_file} ]
+then
+  echo "LSM file exists"
+else
+  echo -e "Error: image $grammar{lsm_dir}/$grammar{lsm_file} does not exist"
+  exit -1
+fi
+
+# Make sure the ImageJ macros exist
+if [ ! -e $IMAGEJ_MACRO ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO does not exist"
+  exit -1
+fi
+if [ ! -e $IMAGEJ_MACRO2 ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO2 does not exist"
+  exit -1
+fi
+
+# Add /usr/local/lib to library path for mplayer library
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+
+# Create work product directories as needed
+echo "Creating work product directories"
+for THISDIR in $grammar{secdata_dirs}
+do
+  if [ ! -e $THISDIR ]
+  then
+    mkdir -p -m 755 $THISDIR
+    if [ ! -e $THISDIR ]
+    then
+      echo -e "Could not create $THISDIR"
+      exit -1
+    fi
+  fi
+done
+
+echo "Running on "`hostname`
+# Run the ImageJ macro for translation
+START=`date '+%F %T'`
+echo "Running $IMAGEJ_MACRO2"
+xvfb-run -a -n 6000 $IMAGEJ $IMAGEJ_MACRO2
+# Run the ImageJ macro for projections, reference, etc.
+echo "Running $IMAGEJ_MACRO"
+xvfb-run -a -n 6000 $IMAGEJ $IMAGEJ_MACRO
+
+if [ $? -ne 0 ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO failed"
+  exit -1
+fi
+
+# Convert translation .avi to .mp4
+echo "Converting translation $grammar{translation_transient}"
+if [ -e $grammar{translation_dir}/$grammar{translation_transient} ]
+then
+  $MAKEMOVIE $grammar{translation_dir}/$grammar{translation_transient} $grammar{translation_dir}/$grammar{translation_file}
+  STATUS=$?
+else
+  echo "Error: no translation at $grammar{translation_dir}/$grammar{translation_transient}"
+  exit -1
+fi
+if [ $STATUS == 0 ]
+then
+  rm $grammar{translation_dir}/$grammar{translation_transient}
+  chmod 755 $grammar{translation_dir}/$grammar{translation_file}
+else
+  echo "Error $STATUS: no translation at $grammar{translation_dir}/$grammar{translation_file}"
+  exit -1
+fi
+
+STOP=`date '+%F %T'`
+/home/svirskasr/workspace/sage/bin/add_operation.pl -operation secondary_data -name "$grammar{sage_image}"  -start "$START" -stop "$STOP" -operator $grammar{userid} -program 'ImageJ' -version '1.38v' -parm imagej_macro="/misc/local/pipeline/template/chacrm3-1.imj_tmpl" -parm imagej_macro_version="3.1"
+
+# Remove transient files
+rm $grammar{tiff_dir}/$grammar{tiff_file}
+
+# Create links
+echo "Creating work product links"
+# Confocal stack
+#cd $grammar{lsm_link}
+#ln -sf $grammar{lsm_rel}/$grammar{lsm_file} $grammar{lsm_file}
+# TIFF stack
+#cd $grammar{tiff_link}
+#ln -sf $grammar{tiff_rel}/$grammar{tiff_file} $grammar{tiff_file}
+# Translation
+cd $grammar{translation_link}
+ln -sf $grammar{translation_rel}/$grammar{translation_file} $grammar{translation_file}
+# Reference
+cd $grammar{reference_link}
+ln -sf $grammar{reference_rel}/$grammar{projection_reference_sum} $grammar{projection_reference_sum}
+# Projections
+cd $grammar{projection_link}
+for PATH in $grammar{projection_rel}/*.jpg
+do
+  if [ -z $PATH ];
+  then
+    echo -e "Error: $PATH is empty"
+    exit -1
+  else
+    chmod 755 $NAME
+    NAME=`/bin/basename $PATH`
+    ln -sf $PATH $NAME
+  fi
+done
+
+# Indexing
+export PERL5LIB='/usr/local/perl5:/usr/local/perl5/lib/perl5/site_perl/5.8.8:/usr/local/perl5/lib/perl5'
+/groups/scicomp/informatics/bin/sage_loader.pl -config /groups/scicomp/informatics/data/rubin_light_imagery -grammar /misc/local/pipeline/grammar/dickson.gra -lab dickson -debug -item "$grammar{date}/$grammar{lsm_file}"
+
+# We're done! Delete the ImageJ macro and this shell script.
+cd /groups/flyprojects/home/flylight/PIPELINE/
+rm -f $IMAGEJ_MACRO
+rm -f $IMAGEJ_MACRO2
+trap "rm -f $0" 0
+echo "Job complete for $grammar{short_file}"

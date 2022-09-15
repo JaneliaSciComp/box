@@ -1,0 +1,34 @@
+#!/usr/bin/perl
+
+# The tracker software apparently doesn't check its own output,
+# so this program will find .blob files where the first row
+# contains 10 columns. If it does, the file is rewritten
+# without the offending row. A backup of the original file is
+# saved as "*.blob.bad".
+
+use File::Copy;
+
+my $path = $ARGV[0] . '/*.blob';
+my @list = (glob $path);
+printf "Repairing %s (%d file%s)\n",$ARGV[0],scalar(@list),
+       ((1 == scalar(@list)) ? '' : 's');
+my $fixed = 0;
+foreach my $file (@list) {
+  open FILE,$file or die "Could not open $file";
+  my $line = <FILE>;
+  my @a = split(/\s+/,$line);
+  print "  Checked $file (",scalar(@a),")\n";
+  if (10 == scalar(@a)) {
+    print "  Fixing $file\n";
+    (my $old = $file) =~ s/\.blob/.blob.bad/;
+    copy($file,$old) or die "Could not copy $file ($!)";
+    (my $new = $file) =~ s/\.blob/.blob.new/;
+    open OUTFILE,">$new" or die "Could not open $new for write ($!)";
+    print OUTFILE $_ while (<FILE>);
+    close(OUTFILE);
+    move($new,$file) or die "Could not move $new to $file ($!)";
+    $fixed++;
+  }
+  close(FILE);
+}
+printf "Repaired %d file%s\n",$fixed,((1 == $fixed) ? '' : 's');

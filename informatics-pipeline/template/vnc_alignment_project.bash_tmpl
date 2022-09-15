@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Program locations:
+FIJI='/groups/sciserv/flyolympiad/vnc_align/scripts/Fiji.app/ImageJ-linux64'
+ZPROJECT='/misc/local/pipeline/fiji/z_project.ijm'
+
+echo "Job started at" `date` "on" `hostname`
+SAGE_IMAGE="$grammar{sage_image}"
+USERID="$grammar{userid}"
+echo "$grammar{sage_image}"
+
+# Make sure that registration directory exists
+if [ ! -e $grammar{registration_dir} ]
+  then
+    mkdir -p -m 755 $grammar{registration_dir}
+fi
+STARTDIR=`pwd`
+cd $grammar{registration_dir}
+
+# -------------------------------------------------------------------------------------------
+
+RGB='GRB'
+echo "MIP order: $RGB"
+
+# Z projection
+echo "+----------------------------------------------------------------------+"
+echo "| Running Z projection                                                 |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+awk -F"," '{print $3}' $grammar{registered_pp_warp_qual} | head -1 | sed 's/^  *//' >$grammar{registered_pp_warp_qual_temp}
+awk -F"," '{print $1 $2}' $grammar{registered_pp_warp_qual} >>$grammar{registered_pp_warp_qual_temp}
+xvfb-run --auto-servernum --server-num=200 $FIJI -macro $ZPROJECT "$grammar{registered_pp_warp_raw} $RGB $grammar{registered_pp_warp_qual_temp}" -batch
+/bin/rm -f $grammar{registered_pp_warp_qual_temp}
+STOP=`date '+%F %T'`
+
+echo "Job completed at " `date`
+
+cd $STARTDIR
+trap "rm -f $0" 0

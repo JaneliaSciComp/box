@@ -1,0 +1,47 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flyolympiadctrax.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    Script to convert Baker Lab dv video files to mp4 videofiles
+# Required resources:
+#   Programs:     ffmpeg
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+
+#echo $grammar{sbfmf_file_path}
+#echo $grammar{tracked_annot_path}
+
+if [ ! -d "$grammar{tracked_topdir_path}" ]
+then
+     mkdir "$grammar{tracked_topdir_path}"
+fi
+
+if [ ! -d "$grammar{tracked_expdir_path}" ]
+then
+     mkdir "$grammar{tracked_expdir_path}"
+fi
+
+if [ ! -d "$grammar{tracked_anndir_path}" ]
+then
+     mkdir "$grammar{tracked_anndir_path}"
+fi
+
+# run ctrax
+cd "$grammar{tracked_anndir_path}"
+
+ln -s "$grammar{sbfmf_file_path}" $grammar{filename}
+
+/usr/local/SCE/ctrax_batch --Input=$grammar{filename} --Matfile=$grammar{mat_filename} --AutoEstimateBackground=True --AutoEstimateShape=False --AutoDetectCircularArena=False --SettingsFile=/groups/flyprojects/home/olympiad/bin/pipeline_sbfmf_ctrax/flyolympiad_ctrax.ann
+
+unlink $grammar{filename}
+
+cp "$grammar{stdout_path}" .
+cp "$grammar{stderr_path}" .
+
+cd ~/
+trap "rm -f $0" 0

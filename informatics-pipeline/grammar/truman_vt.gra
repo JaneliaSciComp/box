@@ -1,0 +1,90 @@
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: dir '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Adjust line name
+  $data{transformantid} =~ s/^0//;
+  $data{transformantid} = 'BJD_' . $data{transformantid};
+  $data{line} = $data{transformantid};
+  # Base directories
+  my $BASE = '/groups/flylight/flylight/LarvalScreen/Rubin_Line_Confocals/';
+  $data{img_application} = 'truman-image';
+  $data{family} = $data{designator} = 'truman_vt';
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $BASE . $data{dir};
+  $data{lsm_file} = $data{source_file} = $data{file};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{sage_image} = join('/',@data{qw(dir source_file)});
+  # Secondary data: projections
+  $data{projection_dir} = join('/',$data{lsm_dir},'proj_JPG');
+  $data{projection_loc} = join('/',$data{dir},'proj_JPG');
+  $data{projection_red_file} = $no_ext . '_R.jpg';
+  $data{projection_green_file} = $no_ext . '_G.jpg';
+  $data{projection_blue_file} = $no_ext . '_B.jpg';
+  # Secondary data: rocks
+  $data{rock_dir} = join('/',$data{lsm_dir},'rock_MOV');
+  $data{rock_loc} = join('/',$data{dir},'rock_MOV');
+  $data{rock_red_file} = $no_ext . '_R.mov';
+  $data{rock_green_file} = $no_ext . '_G.mov';
+  $data{rock_blue_file} = $no_ext . '_B.mov';
+  # Secondary data: translations
+  $data{translation_dir} = join('/',$data{lsm_dir},'stack_MOV');
+  $data{translation_loc} = join('/',$data{dir},'stack_MOV');
+  $data{translation_file} = $no_ext . '.mov';
+  # Secondary data: TIFFs
+  $data{tiff_dir} = join('/',$data{lsm_dir},'stack_TIFF');
+  $data{tiff_loc} = join('/',$data{dir},'stack_TIFF');
+  $data{tiff_file} = $no_ext . '.tif';
+  # Secondary data directories
+  $data{secdata_dirs} = join ' ',@data{map { $_.'_dir' }
+      qw(projection rock tiff translation)};
+  $data{secdata_store} = join(',',qw(projection_red projection_green
+                                     projection_blue rock_red rock_green
+                                     rock_blue tiff translation));
+  $return = { $item[0] => join('/',$data{dir},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+stack: labid '_' transformantid '_' datestamp '' designator
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('_',$data{labid},$data{transformantid},
+                               $data{datestamp})
+                          . $data{designator}, %data };
+} | <error: illegal stack>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+dir: prefixd '' capturedate '' suffixd
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error: illegal directory name>
+
+transformantid: plate '' well '_' vector '_' landing_site
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error: illegal transformant ID>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+prefixd: /Confocal(?:_stacks)?_/ | ''
+capturedate: /[0-9-]+/ | <error: illegal capture date>
+suffixd: /[^\/]*/
+labid: 'VT' | <error: illegal lab ID>
+plate: /[0-9]{1,3}/ | <error: illegal plate>
+well: /[A-H](?:0[1-9]|1[012])/ | <error: illegal well>
+vector: /[A-Z]{2}/ | <error: illegal vector>
+landing_site: /\d{2}/ | <error: illegal landing site>
+datestamp: /\d{6}/ | <error: illegal datestamp>
+designator: /[^\.]*/
+extension: 'lsm' | <error: illegal stack file extension>

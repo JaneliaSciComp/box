@@ -1,0 +1,315 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  larval-choreography-combined.bash_tmpl
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2012-03-26
+# Description:    Script to run choreography and combine results into single file per measurement
+# Required resources:
+#   Programs:     Chore.jar, Java 1.6
+#                 
+# Parameters:     <source_dir> <dest_dir> <tracker_name>
+#
+# <tracker_name> is 't' followed by one or more digits 
+#
+#
+# ****************************************************************************
+
+# ---------------------------------
+# Description: Consolidate all .dat files (file per ID *<measurement>.XXXXX.dat) into a *single file* by adding one columns, DATE_TIME, to each file and then concatenating them together into a single .dat file for the measurement specified 
+# Parameters 
+# $1 : source_dir to locate and process (use the target dir from Choreography)
+# $2 : pattern (the -O value sent to Choreography)
+#
+# ---------------------------------
+
+function prepend_mergefiles_cleanup {
+echo "$1 $2"
+echo "Combining choreography for $2"
+for I in `find $1 -type f -name "*@.$2.[0-9][0-9][0-9][0-9][0-9].dat"`
+  do 
+  Identifier=$(echo $I | xargs basename | cut -d \@ -f 7 | cut -d \. -f 3)
+  Date_time=$(echo $I | xargs basename | cut -d \@ -f 1)
+  Bname="$(echo $I | xargs basename | cut -d \@  -f 1-6)"
+  Dname=`dirname "$I"`
+  Name="$Dname/$Bname" 
+#  echo "$1 $2 $Date_time $Identifier $Name $I"
+
+  sed -i "s/^/$Date_time /g" $I
+  cat "$I" >> "$Name.$2.dat.tmp" 
+  done
+
+if [ -f "$Name.$2.dat.tmp" ]
+then
+     find $1 -type f -name "*@.$2.[0-9][0-9][0-9][0-9][0-9].dat" -exec rm -f '{}' \;
+     sort -nk2 -nk3 "$Name.$2.dat.tmp" > "$Name.$2.dat"
+     echo "generating combined file: $Name.$2.dat"
+     rm -f "$Name.$2.dat.tmp"
+fi
+echo "Completed choreography for $2"
+
+}
+
+# ---------------------------------
+# Description: Consolidate all .spine|outline files (file per ID *.XXXXX.spine|outline) into a *single file* (both a .spine and .outline) by adding two columns, DATE_TIME & ID, to each file found and then concatenating them together into a single .spine|outline file for extension found 
+# Parameters 
+# $1 : source_dir to locate and process (use the target dir from Choreography)
+# $2 : pattern (the -O value sent to Choreography)
+#
+# -------------------------------
+function prepend_mergefiles_cleanup_by_extension {
+echo "$1 $2"
+for I in `find $1 -type f -name "*@.[0-9][0-9][0-9][0-9][0-9].$2"`
+  do 
+  Measurement=$(echo $I | xargs basename | cut -d \@ -f 7 | cut -d \. -f 2)
+  Date_time=$(echo $I | xargs basename | cut -d \@ -f 1)
+  Bname="$(echo $I | xargs basename | cut -d \@  -f 1-6)"
+  Dname=`dirname "$I"`
+  Name="$Dname/$Bname"
+#  echo "$1 $2 $Date_time $Measurement $Name $I"
+
+  sed -i "s/^/$Date_time $Measurement /g" $I
+  cat "$I" >> "$Name.$2.tmp" 
+  done
+
+if [ -f "$Name.$2.tmp" ]
+then
+     find $1 -type f -name "*@.[0-9][0-9][0-9][0-9][0-9].$2" -exec rm -f '{}' \;
+     sort -nk2 -nk3 "$Name.$2.tmp" > "$Name.$2"
+     echo "generating combined file: $Name.$2"
+     rm -f "$Name.$2.tmp"
+fi
+
+}
+
+echo "Job started"`date`;
+
+JAVA='/usr/local/java/bin/java';
+CHORE='/usr/local/MWT/Chore.jar';
+
+CSRC_DIR="$1"
+if [ -z "$CSRC_DIR" ] 
+then
+   CSRC_DIR='$grammar{source_dir}';
+fi
+CDEST_DIR="$2"
+if [ -z "$CDEST_DIR" ]
+then
+   CDEST_DIR='$grammar{dest_dir}';
+fi
+
+CTRACKER="$3"
+if [ -z "$CTRACKER" ]
+then
+   CTRACKER='$grammar{tracker}';
+fi
+
+echo "Repairing .blob files"
+perl /misc/local/pipeline/bin/repair_blob "$CSRC_DIR"
+
+GUEST="afonso";
+TAXIS="N";
+if [ 't7' == "$CTRACKER" ];
+then
+  PV=0.1293478;
+  TAXIS="Y";
+elif [ 't8' == "$CTRACKER" ];
+then 
+  PV=0.126154;
+  TAXIS="Y";
+elif [ 't9' == "$CTRACKER" ];
+then
+  PV=0.1352831;
+  TAXIS="Y";
+elif [ 't10' == "$CTRACKER" ];
+then
+  PV=0.1353054;
+  TAXIS="Y";
+elif [ 't11' == "$CTRACKER" ];
+then
+  PV=0.1194;
+  TAXIS="Y";
+  GUEST="reid";
+elif [ 't12' == "$CTRACKER" ];
+then
+  PV=0.142;
+  TAXIS="Y";
+  GUEST="carvalho";
+else
+  PV=0.03;
+fi
+echo "Tracker $CTRACKER, p-value $PV, guest $GUEST"
+
+mkdir -p "$CDEST_DIR"
+
+if [ 't12' == "$CTRACKER" ];
+then
+# tracker t12
+OP="area";
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 -p $PV --shadowless --segment --nanless --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin SpinesForward::rebias --minimum-biased 3mm -S --nanless -o Dte1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="speed";
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 --shadowless --segment --nanless -p $PV --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin SpinesForward::rebias --minimum-biased 3mm -S --nanless -o Dts1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="crabspeed";
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 --shadowless --segment --nanless -p $PV --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 -o Dtr1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="x";
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 --shadowless --segment --nanless -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 -o Dtx1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="y";
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 --shadowless --segment --nanless -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 -o Dty1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="midline";
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 --shadowless --segment --nanless -p $PV --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 -o Dtm1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="morpwidth";
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 --shadowless --segment --nanless -p $PV --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 -o DtM1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="cast";
+$JAVA -jar $CHORE -t 5 -s 0.1 -M 1 --shadowless --segment --nanless -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin LarvaCast::angle -o DtC1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+elif [ 't11' == "$CTRACKER" ];
+then
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin Flux::+E,425,745,15mm,15mm::count::E,424,1618,15mm,15mm::count::E,1298,1619,15mm,15mm::count::E,1296,745,15mm,15mm::count –plugin LarvaCast::head=0.0,0.5::angle –plugin LarvaCast::head=0,0::max –o DtelwmPxyCCCCCCCCCCC -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+
+# Object ID
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –o D -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# Time
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –o t -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# Area
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –o e -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# Length
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –o l -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# Width
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –o w -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# Midline
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –o m -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# Pathlength
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –o P -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# X coordinate of the object
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –o x -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# Y coordinate of the object
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –o y -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# Flux
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Flux::+E,425,745,15mm,15mm::count::E,424,1618,15mm,15mm::count::E,1298,1619,15mm,15mm::count::E,1296,745,15mm,15mm::count –o C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# LarvaCast – angle to tail line (1st column)
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin LarvaCast::head=0.0,0.5::angle –o C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# LarvaCast – head x vector (2nd column)
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin LarvaCast::head=0.0,0.5::angle –o C~C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# LarvaCast – head y vector (3rd column)
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin LarvaCast::head=0.0,0.5::angle –o C~C~C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# LarvaCast – x coordinate of vector pointing forward along the tail (4th column)
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin LarvaCast::head=0.0,0.5::angle –o C~C~C~C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# LarvaCast – y coordinate of vector pointing forward along the tail (5th column)
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin LarvaCast::head=0.0,0.5::angle –o C~C~C~C~C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# LarvaCast – x coordinate of centre of tail (6th column)
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin LarvaCast::head=0.0,0.5::angle –o C~C~C~C~C~C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# LarvaCast – x coordinate of centre of tail (7th column)
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin LarvaCast::head=0.0,0.5::angle –o C~C~C~C~C~C~C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# LarvaCastMax – Distance to tail line (1st Column)
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin LarvaCast::head=0,0::max –o C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# LarvaCastMax – x coordinate of most distant point of head (2nd column)
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin LarvaCast::head=0,0::max –o C~C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+# LarvaCastMax – y coordinate of most distant point of head (3rd column)
+$JAVA -jar $CHORE -t 10 -s 0.1 -M 1 -p $PV --shadowless --segment –plugin SpinesForward::rebias --plugin Reoutline::exp –plugin Respine::0.23::tapered=0.28,1,2 –plugin LarvaCast::head=0,0::max –o C~C ~C -O taxis -N all --target "$CDEST_DIR" "$CSRC_DIR"
+
+elif [ 'Y' == "$TAXIS" ];
+then
+# t7-t10
+# area speed crabspeed x y midline morpwidth cast headx heady tailvecx tailvecy nosex nosey
+OP="area";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV -S --nanless --shadowless -o Dte1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="speed";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV -S --nanless --shadowless -o Dts1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="crabspeed";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --nanless --shadowless -o Dtc1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="x";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 -o Dtx1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="y";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 -o Dty1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="midline";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 -o Dtm1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="morpwidth";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 -o DtM1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="cast";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin LarvaCast::head=0.0,0.5::angle -o DtC1234 -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="headx";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin LarvaCast::head=0.0,0.5::angle -o "DtC~C1234" -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="heady";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin LarvaCast::head=0.0,0.5::angle -o "DtC~C~C1234" -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="tailvecx";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin LarvaCast::head=0.0,0.5::angle -o "DtC~C~C~C1234" -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="tailvecy";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin LarvaCast::head=0.0,0.5::angle -o "DtC~C~C~C~C1234" -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="nosex";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin LarvaCast::head=0,0::max -o "DtC~C1234" -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+OP="nosey";
+$JAVA -jar $CHORE -t 15 -s 0.1 -M 1 -p $PV --shadowless --segment --plugin SpinesForward::rebias --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin LarvaCast::head=0,0::max -o "DtC~C~C1234" -O "$OP" -N all --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+else
+# Other trackers (there shouldn't be any)
+echo "Bad tracker!"
+fi
+
+# We're done! Delete this shell script.
+echo "Will delete $0"
+trap "rm -f $0" 0
+echo "Job complete"`date`;

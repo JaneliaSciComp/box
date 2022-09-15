@@ -1,0 +1,60 @@
+# ****************************************************************************
+# Resource name:  chacrm.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-01-02
+# Description:    This grammar will parse the qualified stack names
+#                 (date/file) for the Rubin Lab's ChaCRM images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: date '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Base directories
+  my $BASE = '/groups/rubin/rubinimg';
+  my $SECONDARY = join '/',$BASE,'RDSecData';
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $BASE . "/RDconfocalStacks/"
+                                       . $data{date};
+  $data{lsm_file} = $data{source_file} = $data{file};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  # Common-structure directories (SecData projections is an outlier)
+  foreach (qw(projection rotation tiff translation)) {
+    my $dir = join('/',$SECONDARY,($_ . 's'),$data{date});
+    $dir .= "/$no_ext" if (/projection/);
+    $data{$_ . '_dir'} = $dir;
+  }
+  $data{short_file} = $no_ext;
+  # Rotations
+  $data{rotation_transient} = $data{short_file} . '.avi';
+  $data{rotation_file} = $data{short_file} . '.r.mp4';
+  # Translations
+  $data{translation_transient} = $data{short_file} . '.avi';
+  $data{translation_file} = $data{short_file} . '.t.mp4';
+  # TIFF and JPG files
+  $data{ewm_file} = $data{short_file} . '.ewm.tif';
+  $data{ome_file} = $data{short_file} . '.ome.tif';
+  $data{tiff_file} = $data{short_file} . '.tif';
+  $data{projection_file} = $data{short_file} . '_total.jpg';
+  # Secondary data directories
+  $data{secdata_dirs} = join ' ',@data{map { $_.'_dir' }
+      qw(projection tiff rotation translation)},$data{link_dirs};
+  $return = { $item[0] => join('/',$data{date},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+date: /\d{4}(?:0[1-9]|1[012])(?:0[1-9]|[12]\d|3[01])/ | <error: illegal date>
+stack: /RD[^.]*/ | <error: illegal stack>
+extension: 'lsm' | <error: illegal extension>

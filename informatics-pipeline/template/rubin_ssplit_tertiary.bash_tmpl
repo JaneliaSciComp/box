@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Parameters
+if [ ! $1 ]
+then
+  echo "Error: no ImageJ macro specified"
+  exit -1
+fi
+IMAGEJ_MACRO=$1
+
+# Make sure the ImageJ macro exists
+if [ ! -e $IMAGEJ_MACRO ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO does not exist"
+  exit -1
+fi
+
+# Run the Fiji macro
+START=`date '+%F %T'`
+/usr/local/Fiji.app-20110307/fiji-linux64 --headless -eval 'run("Refresh JRuby Scripts","");' -Dplugins.dir=/groups/rubin/home/rubinlab/aRnim/scripts/ij/ -macro $IMAGEJ_MACRO -batch
+
+if [ $? -ne 0 ]
+then
+  echo -e "Error: Fiji macro $IMAGEJ_MACRO failed"
+  exit -1
+fi
+
+STOP=`date '+%F %T'`
+/home/svirskasr/workspace/sage/bin/add_operation.pl -operation tertiary_data -name "$grammar{sage_image}"  -start "$START" -stop "$STOP" -operator $grammar{userid} -program 'ImageJ' -version '1.38v' -parm imagej_macro="/misc/local/pipeline/template/rubin_ssplit_tertiary.imj_tmpl" -parm imagej_macro_version="1.0"
+
+# We're done! Delete the ImageJ macro and this shell script.
+cd /groups/flyprojects/home/flylight/RUBINLAB2/TERTIARY/
+rm -f $IMAGEJ_MACRO
+trap "rm -f $0" 0
+echo "Job complete for $grammar{short_file}"

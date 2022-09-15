@@ -1,0 +1,85 @@
+# ****************************************************************************
+# Resource name:  baker_biorad.gra          
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-10-01
+# Description:    This grammar will parse the qualified stack names
+#                 for the Baker Lab's images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: path
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  $data{line} = $data{dir1};
+  # Base directories
+  my $BASE = '/groups/baker/bakerlab/MicroscopeData';
+  $data{img_application} = 'baker-image';
+  # LSM files - WARNING! The file names are not guaranteed unique!
+  $data{tif_dir} = $data{source_dir} = join('/',$BASE,@data{qw(type_dir dir1)});
+  $data{tif_file} = $data{source_file} = $data{file};
+  $data{sage_image} = join('/',@data{qw(type_dir line source_file)});
+  # Strip the extension off the file name
+  (my $short = $data{file}) =~ s/\..*$//;
+  $data{short_file} = $short;
+  my $PRODUCT_BASE = '';
+  if ('BioRad_Confocal_Stacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'BioRad_Secondary_Data';
+    $data{designator} = 'baker_biorad';
+  }
+  $BASE = join('/',$BASE,$PRODUCT_BASE);
+  my $new_dir = $data{dir1};
+  # Projections
+  $data{projection_dir} = join('/',$BASE,'projections',$new_dir);
+  $data{projection_loc} = join('/','projections',$new_dir);
+  $data{projection_all_file} = $data{short_file} . '_00.jpg';
+  $data{projection_pattern_file} = $data{short_file} . '_ch2_00.jpg';
+  # Rotations
+  $data{rotation_dir} = join('/',$BASE,'rotations',$new_dir);
+  $data{rotation_loc} = join('/','rotations',$new_dir);
+  $data{rotation_transient} = $data{short_file} . '.r.avi';
+  $data{rotation_file} = $data{short_file} . '.r.mp4';
+  # Translations (Z stack)
+  $data{translation_dir} = join('/',$BASE,'translations',$new_dir);
+  $data{translation_loc} = join('/','translations',$new_dir);
+  $data{translation_transient} = $data{short_file} . '.t.avi';
+  $data{translation_file} = $data{short_file} . '.t.mp4';
+  # Secondary data directories
+  $data{secdata_dirs} = join ' ',@data{map { $_.'_dir' }
+      qw(projection rotation translation)};
+  $data{secdata_store} = join(',',qw(projection_all projection_pattern
+                                     rotation translation));
+  $data{substack_store} = join(',',qw(substack_all substack_pattern));
+  $return = { $item[0] => join('/',@data{qw(type_dir dir1 file)}), %data };
+} | <error>
+
+path: biorad
+{
+  my %data = &assign(\%item);
+  $return = { %data };
+} | <error>
+
+biorad: type_dir '/' dir1 '/' file
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',@data{qw(type_dir dir1 file)}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+dir1: /\d+-\d+/ | <error: illegal directory name>
+stack: /[A-Za-z0-9_, \-()#=&]+/ | <error: illegal stack file name>
+capturedate: /\d{8}/ | <error: illegal capture date>
+type_dir: 'BioRad_Confocal_Stacks'
+          | <error: illegal type directory name>
+extension: 'tif' | <error: illegal stack file extension>

@@ -1,0 +1,42 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flybowlctrax.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2011-02-07
+# Description:    Script to run Ctrax on Fly Bowl experiments
+# Required resources:
+#   Programs:     ctrax
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+echo $grammar{plate_num}
+#echo $grammar{checkfile}
+#echo $grammar{ufmf_file_path}
+#echo $grammar{tracked_annot_path}
+
+if [ ! -d "$grammar{tracked_topdir_path}" ]
+then
+     mv "$grammar{ufmf_dir_path}" "$grammar{tracked_topdir_path}"
+fi
+
+
+# run ctrax
+export CTRAX_NO_REDIRECT=1
+SETTINGSFILE=$grammar{ctrax_params}
+DIAGNOSTICSFILE=$grammar{tracked_topdir_path}/ctrax_diagnostics.txt
+
+cd "$grammar{tracked_topdir_path}"
+
+# olympiad screen
+/groups/flyprojects/home/olympiad/bowl_pipeline/ctrax_batch --Input=movie.ufmf --SettingsFile=$grammar{ctrax_params} --Output=movie.ufmf.ann --Matfile=ctrax_results.mat --DiagnosticsFile=ctrax_diagnostics.txt --AutoEstimateBackground=True --AutoEstimateShape=False --AutoDetectCircularArena=True >& ctrax_log.txt
+
+cp $grammar{stdout_path} .
+cp $grammar{stderr_path} .
+
+/groups/flyprojects/home/olympiad/bowl_bin/flybowl_inline_dataloader_sl63.pl $grammar{tracked_topdir_path} ctrax_diagnostics.txt
+
+cd /groups/flyprojects/home/olympiad/bowl_pipeline/
+trap "rm -f $0" 0

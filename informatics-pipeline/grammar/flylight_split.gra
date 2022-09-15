@@ -1,0 +1,92 @@
+# ****************************************************************************
+# Resource name:  chacrm.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-01-02
+# Description:    This grammar will parse the qualified stack names
+#                 (date/file) for the Rubin Lab's ChaCRM images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: ddate '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Some aliases to match other labs
+  $data{organ} = $data{area};
+  $data{specimen} = $data{sequencenumber};
+  # Base directories
+  my $BASE = '/archive/rubin/data1/rubinlab/aRnim/IMAGE-DATA/Split-Gal4/org-import';
+  $data{source_dir} = join('/',$BASE,$data{ddate});
+  $data{source_file} = $data{file};
+  $data{path} = $data{source_path} = join('/',$BASE,$data{ddate},$data{file});
+  ($data{target_path} = $data{path}) =~ s/tiff?$/png/;
+  $data{convert_image} = 1;
+
+  $data{img_application} = 'rubin-image';
+  $data{designator} = $data{family} = 'flylight_split';
+
+  # LSM files
+  $data{source_file} = $data{file};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{sage_image} = join('/',@data{qw(ddate source_file)});
+  $data{short_file} = $no_ext;
+
+  $return = { $item[0] => join('/',$data{ddate},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+stack: line '@' date '@' stuff '@' area '@' ddate
+       '-' sequencenumber '.' img '@' uid
+{
+  my %data = &assign(\%item);
+  my @order = qw(line date stuff area ddate);
+  $return = { $item[0] => join('@',@data{@order[0..4]}) . '-'
+                          . $data{sequencenumber} . '.'
+                          . $data{img} . '@' . $data{uid}, %data };
+} | <error: illegal stack>
+
+line: dna_binding_domain '-x-' activation_domain
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{dna_binding_domain} . '-x-'
+              . $data{activation_domain}, %data };
+} | <error: illegal line>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+activation_domain: labid '_' plate '' well '_' vector '_' landing_site
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error: illegal transformant ID>
+
+dna_binding_domain: labid '_' plate '' well '_' vector '_' landing_site
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error: illegal transformant ID>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+stuff: /AJ-[A-Z]*\d+-\d+/ | <error: illegal stuff>
+img: /img\d+/ | <error: illegal img>
+ddate: /D\d{2}(?:0[1-9]|1[012])(?:0[1-9]|[12]\d|3[01])/ | <error: illegal date>
+date: /\d{2}(?:0[1-9]|1[012])(?:0[1-9]|[12]\d|3[01])/ | <error: illegal date>
+labid: 'GMR' | <error: illegal lab ID>
+plate: /[1-9][0-9]{0,2}/ | <error: illegal plate>
+well: /[A-H](?:0[1-9]|1[012])/ | <error: illegal well>
+vector: /[A-Z]{2}/ | <error: illegal vector>
+landing_site: /\d{2}/ | <error: illegal landing site>
+sequencenumber: /\d{2,3}/ | <error: illegal sequence number>
+area: /(?:brain)/ | <error: illegal area>
+datestamp: /C\d{6}/ | <error: illegal datestamp>
+uid: /\d{17}/ | <error: illegal UID>
+extension: 'tiff' | <error: illegal extension>

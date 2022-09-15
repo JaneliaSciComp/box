@@ -1,0 +1,26 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flyolympiadmergefotrak.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    Script to convert Baker Lab dv video files to mp4 videofiles
+# Required resources:
+#   Programs:     ffmpeg
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+# 
+
+# Merge the tracking results
+source ~/.bashrc
+source /usr/local/matutil/mcr_select.sh 2008b
+
+/groups/flyprojects/home/olympiad/bin/merge_analysis_output "$grammar{fotrak_dir}"
+
+source /usr/local/matutil/mcr_select.sh clean
+
+cd ~/
+trap "rm -f $0" 0

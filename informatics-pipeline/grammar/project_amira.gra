@@ -1,0 +1,52 @@
+# ****************************************************************************
+# Resource name:  project_amira.gra          
+# Written by:     Rob Svirskas
+# Revision level: 1.1
+# Date released:  2016-11-15
+# Description:    This grammar will parse Viegga-generated Amira stacks
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: path
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  ($data{sentinel} = $data{path}) =~ s/VT_amira/VT_aligned_mips/;
+  $data{sentinel} =~ s/am$/png/;
+  $return = { $item[0] => join('/',@data{qw(dir file)}), %data };
+} | <error>
+
+path: dir '/' file
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',@data{qw(dir file)}), %data };
+} | <error>
+
+file: stack
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} , %data };
+}
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+dir: '/groups/flylight/flylight/VT_Image_Data/VT_amira/' reporter
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+stack: short_file '.' extension
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+short_file: /[^\.]+/ | <error: illegal short file>
+reporter: /[^\/]+/ | <error: illegal reporter>
+extension: /am/ | <error: illegal extension>

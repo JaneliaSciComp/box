@@ -1,0 +1,38 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flybowlclassifysex.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2011-02-07
+# Description:    Script to run classifysex script on Fly Bowl experiments
+# Required resources:
+#   Programs:     
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+#echo $grammar{checkfile}
+#echo $grammar{classifysex_dir_path}
+#echo $grammar{reg_dir_path}
+
+if [ ! -d "$grammar{classifysex_dir_path}" ]
+then
+     mv "$grammar{reg_dir_path}" "$grammar{classifysex_dir_path}"
+     echo "moving $grammar{reg_dir_path} to $grammar{classifysex_dir_path}"
+fi
+
+source ~/.bashrc;
+
+export MCR_CACHE_ROOT=/scratch/olympiad/mcr_cache_root_olympiad.$JOB_ID;
+mkdir -p $MCR_CACHE_ROOT;
+
+#$grammar{run_path}/classifysex_cmd.sh $grammar{classifysex_dir_path} 
+
+$grammar{run_path}/run_FlyBowlClassifySex.sh /groups/branson/bransonlab/projects/olympiad/MCR/v717 $grammar{classifysex_dir_path} analysis_protocol $grammar{analysis_protocol}
+
+/groups/flyprojects/home/olympiad/bowl_bin/flybowl_inline_dataloader.pl $grammar{classifysex_dir_path} sexclassifier_diagnostics.txt
+
+rm -rf $MCR_CACHE_ROOT;
+cd /groups/flyprojects/home/olympiad/bowl_pipeline/
+trap "rm -f $0" 0

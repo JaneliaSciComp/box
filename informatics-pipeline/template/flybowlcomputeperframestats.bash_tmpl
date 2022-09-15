@@ -1,0 +1,46 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flybowlcomputeperframestats.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2011-02-14
+# Description:    Script to run FlyBowlComputePerFrameStats script on Fly Bowl experiments
+# Required resources:
+#   Programs:     
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+#echo $grammar{checkfile}
+#echo $grammar{perframefeat_dir_path}
+#echo $grammar{computeperframestats_dir_path}
+
+if [ ! -d "$grammar{computeperframestats_dir_path}" ]
+then
+     mv "$grammar{perframefeat_dir_path}" "$grammar{computeperframestats_dir_path}"
+     echo "moving $grammar{perframefeat_dir_path} to $grammar{computeperframestats_dir_path}"
+fi
+
+source ~/.bashrc;
+
+export MCR_CACHE_ROOT=/scratch/olympiad/mcr_cache_root_olympiad.$JOB_ID;
+mkdir -p $MCR_CACHE_ROOT;
+
+#/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/current/run_FlyBowlComputePerFrameStats.sh /groups/branson/bransonlab/projects/olympiad/MCR/v716 $grammar{computeperframestats_dir_path} visible on analysis_protocol $grammar{analysis_protocol}
+#/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/20120706/run_FlyBowlComputePerFrameStats2.sh /groups/branson/bransonlab/projects/olympiad/MCR/v717 $grammar{computeperframestats_dir_path} analysis_protocol 20120706
+
+/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/current/run_FlyBowlComputePerFrameStats2.sh /groups/branson/bransonlab/projects/olympiad/MCR/v717 $grammar{computeperframestats_dir_path} analysis_protocol $grammar{analysis_protocol}
+
+#/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/current/run_FlyBowlPlotPerFrameStats.sh /groups/branson/bransonlab/projects/olympiad/MCR/v716 $grammar{computeperframestats_dir_path} analysis_protocol $grammar{analysis_protocol}
+#/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/20120706/run_FlyBowlPlotPerFrameStats2.sh /groups/branson/bransonlab/projects/olympiad/MCR/v717 $grammar{computeperframestats_dir_path} analysis_protocol 20120706 
+#/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/20120706/run_FlyBowlPlotPerFrameStats2.sh /groups/branson/bransonlab/projects/olympiad/MCR/v717 $grammar{computeperframestats_dir_path} analysis_protocol 20120706 plotstatsonly 1
+
+/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/current/run_FlyBowlPlotPerFrameStats2.sh /groups/branson/bransonlab/projects/olympiad/MCR/v717 $grammar{computeperframestats_dir_path} analysis_protocol $grammar{analysis_protocol}
+
+/groups/flyprojects/home/olympiad/bowl_bin/flybowl_inline_dataloader.pl $grammar{computeperframestats_dir_path} stats_perframe.txt
+/groups/flyprojects/home/olympiad/bowl_bin/flybowl_inline_dataloader.pl $grammar{computeperframestats_dir_path} hist_perframe.txt
+
+rm -rf $MCR_CACHE_ROOT;
+cd /groups/flyprojects/home/olympiad/bowl_pipeline/
+trap "rm -f $0" 0

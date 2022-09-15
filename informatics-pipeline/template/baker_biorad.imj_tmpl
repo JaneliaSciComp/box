@@ -1,0 +1,169 @@
+// ***************************************************************************
+// Resource name:  baker_biorad.imj_tmpl
+// Written by:     Rob Svirskas
+// Revision level: 1.0
+// Date released:  2008-06-13
+// Description:    After processing, this ImageJ macro template template
+//                 implements the image processing flow for the Baker Lab's
+//                 images. ImageJ is used to create stack projections,
+//                 a Z stack translation, and a 180 degree single-axis
+//                 rotation.
+// Parameters:     NONE
+// ***************************************************************************
+
+// $grammar{tif_file}
+requires("1.38x");
+
+var method="[Maximum Intensity]";
+var rmethod="[Brightest Point]";
+var base='$grammar{tif_file} Channel : ';
+
+print("Sequence start for $grammar{tif_file}");
+saveSettings();
+loadStack();
+recolorStack();
+if (nSlices > 1) {
+  createTranslation();
+  createRotation();
+}
+createProjections();
+terminateMacro();
+
+function loadStack() {
+  print("Opening $grammar{tif_dir}/$grammar{tif_file}");
+  open("$grammar{tif_dir}/$grammar{tif_file}");
+  if (nImages() == 0) {
+    exit("Could not open $grammar{tif_dir}/$grammar{tif_file}");
+  }
+  print("Image opened");
+}
+
+function recolorStack() {
+  // Convert
+  print("Converting to RGB");
+  run("RGB Color");
+  // Split
+  print("Splitting $grammar{file}");
+  run("RGB Split");
+  // Merge
+  print("Merging $grammar{file}");
+  run("RGB Merge...","red=[$grammar{file} (red)] green=[$grammar{file} (green)]"
+      + " blue=[$grammar{file} (red)]");
+}
+
+
+function createProjections() {
+  print("Generating projections");
+  // Reference+pattern total projection
+  print("  Creating total projection (reference+pattern)");
+  zProject();
+  saveAs("Jpeg","$grammar{projection_dir}/$grammar{short_file}" + "_00.jpg");
+  close();
+  print("  Total projection complete");
+
+  // Reference+pattern substacks
+  print("  Creating substack projections (reference+pattern)");
+  subStack=15;
+  orgNum=nSlices;
+  slNum=nSlices;
+  while (slNum>=subStack) {
+    slNum=slNum-subStack;
+  }
+  addNum=subStack-slNum;
+  if (slNum>0) {
+    for (t=1; t<=addNum; t++)  {
+      setSlice(nSlices);
+      run("Add Slice");
+      run("Subtract...", "slice value=255");
+    }
+  }
+  run("Grouped ZProjector", "group="+subStack+" projection=[Max Intensity]");
+  filepath = "$grammar{projection_dir}/$grammar{short_file}" + "_01.jpg";
+  run("Image Sequence... ", "format=Jpeg name=[$grammar{short_file}"
+      + "_] start=1 digits=2 save=[" + filepath + "]");
+  close();
+  print("  Substack projections complete");
+
+  // Single channel projections
+  print("  Splitting RGB");
+  run("RGB Split");
+  selectWindow("RGB (red)");
+  close();
+  selectWindow("RGB (blue)");
+  close();
+  print("  Split complete");
+
+  // Clear memory
+  clearMemory();
+
+  // Pattern total projection
+  print("  Creating total projection (pattern only)");
+  run("RGB Merge...","red=*None* green=[RGB (green)] blue=*None*");
+  zProject();
+  saveAs("Jpeg", "$grammar{projection_dir}/$grammar{short_file}"
+         + "_ch2_00.jpg");
+  close();
+  print("  Total projection complete");
+
+  // Pattern substacks
+  print("  Creating substack projections (pattern only)");
+  run("Grouped ZProjector","group=" + subStack + " projection=[Max Intensity]");
+  filepath = "$grammar{projection_dir}/$grammar{short_file}" + "_ch2_01.jpg";
+  run("Image Sequence... ", "format=Jpeg name=[$grammar{short_file}"
+      + "_ch2_] start=1 digits=2 save=[" + filepath + "]");
+  close();
+  print("  Substack projections complete");
+  print("Projections generated");
+}
+
+function zProject() {
+  if (nSlices == 1) {
+    return;
+  }
+  run("RGB Zprojector","red=" + method + " green=" + method
+      + " blue=" + method + " power=2");
+  if (method == "[Average Intensity]") {
+    run("Sharpen");
+    run("Enhance Contrast", "saturated=0.5");
+  }
+}
+
+function createTranslation() {
+  print("Generating translation");
+  saveAs("avi","$grammar{translation_dir}/$grammar{translation_transient}");
+  clearMemory();
+  print("Translation generated");
+}
+
+function createRotation() {
+  print("Generating rotation");
+  run("3D Project...","projection=" + rmethod + " axis=Y-Axis slice=1 "
+      + "initial=-90 total=180 rotation=5 lower=1 upper=255 opacity=0 "
+      + "surface=100 interior=1 interpolate");
+  if (method == "[Average Intensity]") {
+    run("Enhance Contrast", "saturated=0.5 normalize_all");
+  }
+  saveAs("avi","$grammar{rotation_dir}/$grammar{rotation_transient}");
+  close();
+  clearMemory();
+  print("Rotation generated");
+}
+
+function clearMemory() {
+  d=call("ij.IJ.maxMemory");
+  e=call("ij.IJ.currentMemory");
+  for (trials=0; trials<3; trials++) {
+    call("java.lang.System.gc");
+    wait(100);
+  }
+}
+
+function terminateMacro() {
+  while (nImages()>0) {
+    selectImage(nImages());
+    run("Close");
+  }
+  print("Sequence stop");
+  run("Quit","");
+  exit();
+}

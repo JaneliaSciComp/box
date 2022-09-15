@@ -1,0 +1,46 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  scombine-all-by-directory.sh
+# Written by:     Steve Matyas
+# Revision level: 1.0
+# Date released:  2011-03-03
+# Description:    Script to combine all measurements and their corresponding <measurement>.r files for each run within a protocol directory
+# Required resources:
+#
+# Parameters:     <per-protocol-dir>
+# ****************************************************************************
+function printUsageAndExit {
+  echo
+  echo "USAGE: `basename $0` <per-protocol-dir>"
+  echo
+  echo "  where <per-protocol-dir> is the path to the .../pipeline/choreography-results/tracker/line@effector/protocol/"
+  exit 1
+}
+
+if [[ $# < 1 ]]; then
+  printUsageAndExit
+fi
+
+PER_PROTOCOL_DIR="$1"
+
+if [ -d ${PER_PROTOCOL_DIR} ]; then 
+
+echo "============================================"
+START=$(date -u +%s)
+while read measurement
+  do
+    echo -e "\tScombining: protocol-dir='${PER_PROTOCOL_DIR}' measurement='${measurement}'"
+    QCMD="/usr/local/pipeline/bin/scombine ${PER_PROTOCOL_DIR} ${measurement}"
+    echo -e "\t${QCMD}"
+    ${QCMD}
+  done < '/groups/zlatic/home/zlaticm/zcombine_measurements.txt'
+END=$(date -u +%s)
+DIFF=$(($END - $START))
+echo "--------------------------------------------"
+echo "Combining ${PER_PROTOCOL_DIR} took $DIFF seconds"
+echo "============================================"
+
+else 
+ echo "Directory does not exist: $PER_PROTOCOL_DIR"
+fi 
+

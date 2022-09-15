@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Required resources
+QPOPULATE="/misc/local/pipeline/bin/qscore_populate -v"
+SAGE_QPOPULATE="/misc/local/pipeline/bin/sage_qscore_populate -v"
+
+# Make sure the .lsm file exists
+if [ -e $grammar{lsm_dir}/$grammar{lsm_file} ]
+then
+#  chmod 555 $grammar{lsm_dir}/$grammar{lsm_file}
+   echo "File exists"
+else
+  echo -e "Error: image $grammar{lsm_dir}/$grammar{lsm_file} does not exist"
+  exit -1
+fi
+
+if [ ! -e $grammar{registration_dir} ]
+  then
+    mkdir -p -m 755 $grammar{registration_dir}
+fi
+
+PORT=1030
+while (test -f "/tmp/.X${PORT}-lock") || (netstat -atwn | grep "^.*:${PORT}.*:\*\s*LISTEN\s*$")
+do PORT=$(( ${PORT} + 1 ))
+done
+/usr/bin/Xvfb :${PORT} -screen 0 1x1x24 -sp /usr/lib64/xserver/SecurityPolicy -fp /usr/share/X11/fonts/misc &
+MYPID=$!
+export DISPLAY="localhost:${PORT}.0"
+
+#JBA rigid alignment------------------------------------- 
+
+/groups/sciserv/flyolympiad/vnc_align/toolkit/JBA/brainaligner  -t /groups/sciserv/flyolympiad/vnc_align/target/flyVNCtemplate2.raw  -s $grammar{lsm_dir}/$grammar{lsm_file}  -o $grammar{registration_dir}/$grammar{rigid_raw}  -w 0 -C 1 -c 1 -B 1024 -Y
+
+#Principal skeleton detection---------------------------- 
+/groups/sciserv/flyolympiad/vnc_align/toolkit/Vaa3D/vaa3d -x principal_skeleton -f detect  -i $grammar{registration_dir}/$grammar{rigid_raw} /groups/sciserv/flyolympiad/vnc_align/target/ps_ini3.marker  /groups/sciserv/flyolympiad/vnc_align/target/vnc_principalskeleton3.domain -o $grammar{registration_dir}/$grammar{rigid_marker} $grammar{registration_dir}/$grammar{rigid_swc} -p 1 1 500 0.01 1 15 1 1
+
+#Principal skeleton based image warping------------------ 
+/groups/sciserv/flyolympiad/vnc_align/toolkit/Vaa3D/vaa3d -x principal_skeleton -f warp -i $grammar{registration_dir}/$grammar{rigid_raw} $grammar{registration_dir}/$grammar{rigid_marker} /groups/sciserv/flyolympiad/vnc_align/target/flyVNCtemplate2.raw /groups/sciserv/flyolympiad/vnc_align/target/ps_ini3.marker /groups/sciserv/flyolympiad/vnc_align/target/vnc_principalskeleton3.domain -o $grammar{registration_dir}/$grammar{rigid_ps_raw} -p 2.0 5 200 1 
+
+#JBA local alignment------------------------------------- 
+/groups/sciserv/flyolympiad/vnc_align/toolkit/JBA/brainaligner  -t /groups/sciserv/flyolympiad/vnc_align/target/flyVNCtemplate2.raw  -s $grammar{registration_dir}/$grammar{rigid_ps_raw} -L /groups/sciserv/flyolympiad/vnc_align/target/flyVNCtemplate2_qul.marker  -o $grammar{registration_dir}/$grammar{rigid_ps_local_raw}  -w 10 -C 1 -c 1 -H 2 -B 1024 
+
+
+# clean up to save space
+rm -f $grammar{registration_dir}/$grammar{rigid_raw}
+rm -f $grammar{registration_dir}/$grammar{rigid_swc}
+rm -f $grammar{registration_dir}/$grammar{rigid_marker}
+rm -f $grammar{registration_dir}/$grammar{rigid_ps_raw}
+
+# load scores to SAGE and Nighthawk
+#  echo "Loading Q scores into Nighthawk"
+#  turned off loading of q scores until it is in production
+#  if [ -e "$grammar{registration_dir}/$grammar{registered_quality}" ]
+#  then
+    #echo "$grammar{registration_dir}/$grammar{registered_ps_local_raw_quality}" | $QPOPULATE
+    #echo "$grammar{registration_dir}/$grammar{registered_ps_local_raw_quality}" | $SAGE_QPOPULATE
+#  fi
+#  echo "Loaded Q scores into Nighthawk"
+
+# Create links
+# turned off creation of links until it is in production
+#echo "Creating work product links"
+# Registration
+#cd $grammar{registration_link}
+#ln -sf $grammar{registration_rel}/$grammar{rigid_ps_local_raw} $grammar{rigid_ps_local_raw}
+#ln -sf $grammar{registration_rel}/$grammar{registered_ps_local_raw_quality} $grammar{registered_ps_local_raw_quality}
+
+# We're done with the frame buffer
+kill -9 $MYPID
+
+cd /groups/flyprojects/home/flylight/PIPELINE/VNC_REGISTRATION/
+trap "rm -f $0" 0

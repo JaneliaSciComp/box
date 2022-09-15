@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+<description>Generate registration for Dickson Lab imagery</description>
+
+
+<!-- Grammar file -->
+<grammar>/misc/local/pipeline/grammar/dickson.gra</grammar>
+<grammar_sample>20140529/BJD_134B05_LC_21_00-fA00b_C140530_20140603144632527.lsm</grammar_sample>
+
+<!-- Command files to create -->
+<command_file type="ImageJ" in_name="/misc/local/pipeline/template/dickson_tiff.imj_tmpl" out_name="$grammar{short_file}.txt" />
+<command_file type="Grid script" in_name="/misc/local/pipeline/template/dickson_registration.bash_tmpl" out_name="$grammar{short_file}.bash" />
+
+<!-- Process flow -->
+<step>
+  <name>Tissue_check</name>
+  <description>Check tissue type</description>
+  <action>equals</action>
+  <value1>$grammar{area}</value1>
+  <value2>b</value2>
+  <pass>Brain</pass>
+  <fail>Not_brain</fail>
+</step>
+<step>
+  <name>Brain</name>
+  <description>Bump "Brain" counter</description>
+  <action>bump_counter</action>
+  <counter>Brain</counter>
+  <pass>Tile_check</pass>
+</step>
+<step>
+  <name>Not_brain</name>
+  <description>Bump "Not_a_brain" counter</description>
+  <action>bump_counter</action>
+  <counter>Not_a_brain</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Tile_check</name>
+  <description>Check if image is part of tile</description>
+  <action>equals</action>
+  <value1>$grammar{is_tiled}</value1>
+  <value2>0</value2>
+  <pass>Not_tile</pass>
+  <fail>Is_tile</fail>
+</step>
+<step>
+  <name>Not_tile</name>
+  <description>Bump Not_a_tile counter</description>
+  <action>bump_counter</action>
+  <counter>Not_a_tile</counter>
+  <pass>Registration_check</pass>
+</step>
+<step>
+  <name>Is_tile</name>
+  <description>Bump Is_a_tile counter</description>
+  <action>bump_counter</action>
+  <counter>Is_a_tile</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Registration_check</name>
+  <description>Check for completed registration</description>
+  <action>file_exists</action>
+  <file>$grammar{registration_dir}/$grammar{short_file}.loop2.raw_matching_quality.csv</file>
+  <pass>Found_registration</pass>
+  <fail>Grid</fail>
+</step>
+<step>
+  <name>Found_registration</name>
+  <description>Bump "found" counter</description>
+  <action>bump_counter</action>
+  <counter>Registrations_found</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Grid</name>
+  <description>Submit generated .bash script to grid</description>
+  <action>grid</action>
+  <qsub_args>-N A$grammar{transformantid} -pe batch 9 -b y -cwd</qsub_args>
+  <args>./$grammar{short_file}.bash $grammar{short_file}.txt</args>
+  <stdout>LOGS/$grammar{short_file}.stdout</stdout>
+  <stderr>LOGS/$grammar{short_file}.stderr</stderr>
+  <pass>Good_submit</pass>
+  <fail>Bad_submit</fail>
+</step>
+<step>
+  <name>Good_submit</name>
+  <description>Bump "submit" counter</description>
+  <action>bump_counter</action>
+  <counter>Submissions</counter>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Bad_submit</name>
+  <action>mail_stack</action>
+  <recipient>svirskasr@janelia.hhmi.org</recipient>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

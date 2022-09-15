@@ -1,0 +1,126 @@
+# ****************************************************************************
+# Resource name:  zlatic_hires.gra          
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2012-02-
+# Description:    This grammar will parse the qualified stack names
+#                 for the Zlatic Lab's high resolution images in
+#                 /groups/zlatic/zlaticimg/highResolutionsForSAGE/highRes.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: path
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Try to figure out the date
+  $data{date} = join('-','20'.substr($data{cdate},4,2),
+                     substr($data{cdate},0,2),substr($data{cdate},2,2));
+  # Base directories
+  my $BASE = '/groups/zlatic/zlaticimg/' . $data{type_dir};
+  $data{img_application} = 'zlatic-image';
+  $data{line} = $data{transformantid};
+  $data{source_dir} = join('/',$BASE,@data{qw(lab_dir)});
+  $data{source_file} = $data{file};
+  $data{sage_image} = join('/',@data{qw(lab_dir tiff_dir source_file)});
+  $data{designator} = $data{family} = ($data{lab_dir} =~ /jim/) ? 'larval_truman_hires'
+                                                                : 'larval_zlatic_hires';
+  # Projections
+  $data{projection_dir} = join('/',$data{source_dir},'AP_composite_projections');
+  $data{projection_loc} = join('/',@data{qw()},'AP_composite_projections');
+  $data{projection_all_file} = $data{stack} . '-composite-projection.jpg';
+  $data{projection_pattern_file} = $data{stack} . '-composite-projection.jpg';
+  if ($data{lab_dir} =~ /jim/) {
+    $data{projection_all_dir} = join('/',$data{source_dir},'AP_composite_projections');
+    $data{projection_all_file} = $data{stack} . '-*.jpg';
+    $data{projection_all_loc} = join('/',@data{qw()},'AP_composite_projections');
+    $data{projection_pattern_dir} = join('/',$data{source_dir},'AP_green_projections');
+    $data{projection_pattern_file} = $data{stack} . '-*.jpg';
+    $data{projection_pattern_loc} = join('/',@data{qw()},'AP_green_projections');
+    $data{projection_pattern_glob} = $data{stack} . '-green-projection.jpg';
+    $data{projection_all_glob} = $data{stack} . '-*.jpg';
+  }
+  # Substacks
+  $data{substack_all_dir} = join('/',$data{source_dir},'sliced_composite_projections');
+  $data{substack_all_loc} = join('/',@data{qw()},'sliced_composite_projections');
+  $data{substack_all_file} = $data{stack} . '-composite-sliced-projection-*-*.jpg';
+  $data{substack_all_path} = join('/',@data{qw(substack_all_dir substack_all_file)});
+  $data{substack_pattern_dir} = join('/',$data{source_dir},'sliced_green_projections');
+  $data{substack_pattern_loc} = join('/',@data{qw()},'sliced_green_projections');
+  $data{substack_pattern_file} = $data{stack} . '-green-sliced-projection-*-*.jpg';
+  $data{substack_pattern_path} = join('/',@data{qw(substack_pattern_dir substack_pattern_file)});
+  if ($data{lab_dir} =~ /jim/) {
+    $data{substack_all_dir} = join('/',$data{source_dir},'sliced_composite_projection');
+    $data{substack_all_loc} = join('/',@data{qw()},'sliced_composite_projection');
+    $data{substack_all_file} = $data{stack} . '-composite-sliced-projection-*.jpg';
+    $data{substack_pattern_dir} = join('/',$data{source_dir},'sliced_green_projection');
+    $data{substack_pattern_loc} = join('/',@data{qw()},'sliced_green_projection');
+    $data{substack_pattern_file} = $data{stack} . '-green-sliced-projection*.jpg';
+  }
+
+  $data{source_dir} = join('/',$BASE,@data{qw(lab_dir tiff_dir)});
+  # Secondary data directories
+  if ($data{lab_dir} =~ /jim/) {
+    $data{secdata_store} = '';
+    $data{substack_store} = join(',',qw(projection_all projection_pattern substack_all substack_pattern));
+  }
+  else {
+    $data{secdata_store} = join(',',qw(projection_all));
+    $data{substack_store} = join(',',qw(substack_all substack_pattern));
+  }
+  # The type_dir isn't being prepended
+  $return = { $item[0] => join('/',@data{qw(lab_dir tiff_dir file)}), %data };
+} | <error>
+
+path: type_dir '/' lab_dir '/' tiff_dir '/' file
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',@data{qw(type_dir lab_dir file)}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $data{stack} = $data{rubin_stack};
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error>
+
+stack: rubin_stack
+{
+  my %data = &assign(\%item);
+  $return = { %data };
+} | <error>
+
+rubin_stack: transformantid '_' cdate '' animal
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{transformantid} . '_' . $data{cdate} . $data{animal}, %data };
+} | <error>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+transformantid: labid '_' plate '' well '_' vector '_' landing_site
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('',@item[1..$#item]), %data };
+} | <error: illegal transformant ID>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+cdate: /[0-9]{6}/ | <error: illegal date>
+animal: /[A-Z]/ | <error: illegal animal>
+labid: 'GMR' | <error: illegal lab ID>
+plate: /[1-9][0-9]{0,2}/ | <error: illegal plate>
+well: /[A-H](?:0[1-9]|1[012])/ | <error: illegal well>
+vector: /[A-Z]{2}/ | <error: illegal vector>
+landing_site: /\d{2}/ | <error: illegal landing site>
+file_type: /(All|Tile)/ | <error: illegal file type>
+type_dir: 'highResolutionsForSAGE/highRes' | <error: illegal type directory name>
+lab_dir: 'jims_projections' | 'martas_projections' | <error: illegal lab directory name>
+tiff_dir: 'tiffs' | <error: illegal tiff directory name>
+extension: 'tif' | <error: illegal stack file extension>

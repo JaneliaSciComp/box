@@ -1,0 +1,233 @@
+# ****************************************************************************
+# Resource name:  simpson.gra          
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-01-02
+# Description:    This grammar will parse the qualified stack names
+#                 for the Simpson Lab's GAL4 images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: path
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Fix line and insertion. Yeah, I'm lazy - I didn't want another rule
+  # to handle the insertion preamble.
+  if (exists($data{line}) && exists($data{insertion})) {
+    $data{line} .= $data{insertion};
+    $data{insertion} =~ s/^_//;
+  }
+  unless (exists $data{line}) {
+    if ($data{dir3}) {
+      $data{line} = $data{dir2};
+    }
+    else {
+      $data{line} = $data{dir1};
+    }
+  }
+  # Base directories
+  my $BASE = '/groups/simpson/MicroscopeData';
+  $data{img_application} = 'simpson-image';
+  # LSM files - WARNING! The file names are not guaranteed unique!
+  $data{lsm_dir} = join('/',$BASE,@data{qw(type_dir dir1)});
+  $data{lsm_dir} = join('/',$data{lsm_dir},$data{dir2}) if ($data{dir2});
+  $data{lsm_dir} = join('/',$data{lsm_dir},$data{dir3}) if ($data{dir3});
+  $data{source_dir} = $data{lsm_dir};
+  $data{lsm_file} = $data{source_file} = $data{file};
+  # We only do a medial translation for Marta's data
+  $data{medial} = 0;
+  # Strip the extension off the file name
+  (my $short = $data{file}) =~ s/\..*$//;
+  $data{short_file} = $short;
+  # Strip the .mdb off of the directory names
+  my $new_dir;
+  if ($data{dir3}) {
+    ($new_dir = join('/',$data{dir1},$data{dir2})) =~ s/\.mdb$//;
+  }
+  else {
+    ($new_dir = $data{dir1}) =~ s/\.mdb$//;
+  }
+  my $PRODUCT_BASE = '';
+  if ('Antibodies_Confocal_Stacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'Antibodies_Secondary_Data';
+    $data{designator} = $data{family} = 'simpson_antibodies';
+    $data{line} = 'JHS_' . $data{line} unless ($data{line} =~ /^JHS_/);
+    $data{line} =~ s/\./_/g;
+  }
+  elsif ('Brainbow_confocal_stacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'Brainbow_Secondary_Data';
+    $data{designator} = 'brainbow';
+  }
+  elsif ('GAL4_confocal_stacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'GAL4_Secondary_Data';
+    $data{designator} = 'GAL4';
+    $data{line} = $data{dir1};
+    # This *should* be impossible, but I'll leave it in just in case.
+    die('Could not parse') unless ($data{line});
+  }
+  elsif ('GAL4_Larvae_confocal_stacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'GAL4_Larvae_Secondary_Data';
+    $data{designator} = 'GAL4-larvae';
+  }
+  elsif ('GAL4_Larva_Marta_confocal_stacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'GAL4_Larva_Marta_Secondary_Data';
+    $data{designator} = 'simpson-gal4-larva-marta';
+    $data{medial} = 1;
+  }
+  elsif ('Immunohistochemistry_Optimizing' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'Immunohistochemistry_Optimizing_Sec_Data';
+    $data{designator} = 'immunohistochemistry-optimizing';
+  }
+  elsif ('Lab_confocal_stacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'Lab_Secondary_Data';
+    $data{designator} = 'simpson-lab';
+  }
+  elsif ('Waffles_confocal_stacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'Waffles_Secondary_Data';
+    $data{designator} = $data{family} = 'simpson_waffles';
+    $data{line} = 'JHS_' . $data{line} unless ($data{line} =~ /^JHS_/);
+  }
+  elsif ('Lex_confocal_stacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'Lex_Secondary_Data';
+    $data{designator} = $data{family} = 'simpson_lex';
+    $data{line} = 'JHS_' . $data{line} unless ($data{line} =~ /^JHS_/);
+  }
+  $BASE = join('/',$BASE,$PRODUCT_BASE);
+  # Projections
+  $data{projection_dir} = join('/',$BASE,'projections',$new_dir);
+  $data{projection_loc} = join('/','projections',$new_dir);
+  $data{projection_all_file} = $data{short_file} . '_00.jpg';
+  $data{projection_pattern_file} = $data{short_file} . '_ch2_00.jpg';
+  # Registrations
+  $data{registration_dir} = join('/',$BASE,'registrations',$new_dir);
+  $data{registration_loc} = join('/','registrations',$new_dir);
+  $data{registered_global_tiff} = $data{short_file} . '.reg.global.tif';
+  $data{projection_global_registered} = $data{short_file} . '.reg.global.jpg';
+  $data{registered_local_tiff} = $data{short_file} . '.reg.local.tif';
+  $data{projection_local_registered} = $data{short_file} . '.reg.local.jpg';
+  # Rotations
+  $data{rotation_dir} = join('/',$BASE,'rotations',$new_dir);
+  $data{rotation_loc} = join('/','rotations',$new_dir);
+  $data{rotation_transient} = $data{short_file} . '.r.avi';
+  $data{rotation_file} = $data{short_file} . '.r.mp4';
+  # Translations (Z stack)
+  $data{translation_dir} = join('/',$BASE,'translations',$new_dir);
+  $data{translation_loc} = join('/','translations',$new_dir);
+  $data{translation_transient} = $data{short_file} . '.t.avi';
+  $data{translation_file} = $data{short_file} . '.t.mp4';
+  # Translations (medial)
+  $data{medial_dir} = join('/',$BASE,'medial',$new_dir);
+  $data{medial_loc} = join('/','medial',$new_dir);
+  $data{medial_transient} = $data{short_file} . '.m.avi';
+  $data{medial_file} = $data{short_file} . '.m.mp4';
+  # TIFF files
+  $data{tiff_dir} = join('/',$BASE,'tiffs',$new_dir);
+  $data{tiff_loc} = join('/','tiffs',$new_dir);
+  $data{ewm_file} = $data{short_file} . '.ewm.tif';
+  $data{ome_file} = $data{short_file} . '.ome.tif';
+  $data{tiff_file} = $data{short_file} . '.tif';
+  # Link directories
+  $data{link_dirs} = '';
+  # Secondary data directories
+  $data{secdata_store} = join(',',qw(projection_all projection_pattern translation rotation));
+  $data{substack_store} = join(',',qw(substack_all substack_pattern));
+  $data{secdata_dirs} = join ' ',@data{map { $_.'_dir' }
+      qw(projection rotation tiff translation)};
+  if ($data{medial}) {
+    $data{secdata_dirs} .= ' ' . $data{medial_dir};
+  }
+  if ($data{dir2}) {
+    $return = { $item[0] => join('/',@data{qw(type_dir dir1 dir2 file)}),
+                            %data };
+  }
+  elsif ($data{dir3}) {
+    $return = { $item[0] => join('/',@data{qw(type_dir dir1 dir2 dir3 file)}),
+                            %data };
+  }
+  else {
+    $return = { $item[0] => join('/',@data{qw(type_dir dir1 file)}), %data };
+  }
+} | <error>
+
+path: gal4 | ihc | other
+{
+  my %data = &assign(\%item);
+  $return = { %data };
+} | <error>
+
+# GAL4 runs
+gal4: type_dir '/' dir1 '/' file
+{
+  my %data = &assign(\%item);
+  $data{dir2} = '';
+  $return = { $item[0] => join('/',@data{qw(type_dir dir1 file)}), %data };
+} | <error>
+
+# IHC runs - these have two intervening directories
+ihc: type_dir '/' dir1 '/' dir2 '/' dir3 '/' file
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',@data{qw(type_dir dir1 dir2 dir3 file)}), %data };
+} | <error>
+
+# Non-GAL4 runs - these have a single intervening directory
+other: type_dir '/' dir1 '/' dir2 '/' file
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',@data{qw(type_dir dir1 dir2 file)}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $data{stack} = $data{qualified_stack} || $data{lexa_stack} || $data{wild_stack};
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error>
+
+stack: qualified_stack | lexa_stack | wild_stack
+{
+  my %data = &assign(\%item);
+  $return = { %data };
+} | <error>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+qualified_stack: prefix '_' line '' insertion '' gal4 '_' capturedate '_' organ '' specimen '_' uid
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+lexa_stack: 'JHS' '_' line '_' capturedate '_' organ '_' uid
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+dir1: /[A-Za-z0-9_\-.]+/ | <error: illegal directory name>
+dir2: /[A-Za-z0-9_\-.]+/ | <error: illegal subdirectory name>
+dir3: /[A-Za-z0-9_\-.]+/ | <error: illegal sub-subdirectory name>
+wild_stack: /[A-Za-z0-9_\-]+/ | <error: illegal stack file name>
+line: /[A-Za-z0-9]+/ | <error: illegal line>
+insertion: /_[A-Za-z0-9\-]+(?=-GAL4_attP2)/ | /_[A-Za-z0-9\-]+(?=-GAL4)/ | '' | <error: illegal insertion>
+gal4: '-GAL4_attP2' | '-GAL4'
+capturedate: /\d{8}/ | <error: illegal capture date>
+organ: 'B' | 'L' | 'T' | <error: illegal organ>
+specimen: /\d+/ | <error: illegal specimen number>
+uid: /\d{17}/ | <error: illegal UID>
+type_dir: 'Antibodies_Confocal_Stacks' | 'Brainbow_confocal_stacks'
+          | 'GAL4_confocal_stacks' | 'GAL4_Larvae_confocal_stacks'
+          | 'Immunohistochemistry_Optimizing'
+          | 'GAL4_Larva_Marta_confocal_stacks'
+          | 'Lab_confocal_stacks'
+          | 'Waffles_confocal_stacks'
+          | 'Lex_confocal_stacks'
+          | <error: illegal type directory name>
+prefix: 'JHS' | 'EXT'
+extension: 'lsm' | <error: illegal stack file extension>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<!-- Grammar -->
+<grammar>/misc/local/pipeline/grammar/simpson.gra</grammar>
+
+<!-- Command files to create -->
+<command_file type="ImageJ script" in_name="/misc/local/pipeline/template/simpson_global.imj_tmpl" out_ext="txt" />
+<command_file type="Grid script" in_name="/misc/local/pipeline/template/simpson_global.bash_tmpl" out_ext="bash" />
+
+<!-- Process flow -->
+<step>
+  <name>Registration_check</name>
+  <description>Check for completed registration</description>
+  <action>file_exists</action>
+  <file>$grammar{registration_dir}/$grammar{registered_global_tiff}</file>
+  <pass>Projection_check</pass>
+  <fail>Cleanup</fail>
+</step>
+<step>
+  <name>Projection_check</name>
+  <description>Check for completed projection</description>
+  <action>file_exists</action>
+  <file>$grammar{registration_dir}/$grammar{projection_global_registered}</file>
+  <pass>Empty_check</pass>
+  <fail>Grid</fail>
+</step>
+<step>
+  <name>Empty_check</name>
+  <description>Check for completed projection</description>
+  <action>file_empty</action>
+  <file>$grammar{registration_dir}/$grammar{projection_global_registered}</file>
+  <pass>Grid</pass>
+  <fail>Found_projection</fail>
+</step>
+<step>
+  <name>Found_projection</name>
+  <description>Bump "found" counter</description>
+  <action>bump_counter</action>
+  <counter>Projections_found</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Grid</name>
+  <description>Submit generated .bash script to grid</description>
+  <action>grid</action>
+  <qsub_args>-N I$grammar{short_file} -b y -pe batch 8 -cwd</qsub_args>
+  <args>./$grammar{grid_script} $grammar{imagej_script}</args>
+  <stdout>LOGS/$grammar{short_file}.stdout</stdout>
+  <stderr>LOGS/$grammar{short_file}.stderr</stderr>
+  <pass>Good_submit</pass>
+  <fail>Bad_submit</fail>
+</step>
+<step>
+  <name>Good_submit</name>
+  <description>Bump "submit" counter</description>
+  <action>bump_counter</action>
+  <counter>Submissions</counter>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Bad_submit</name>
+  <action>mail_stack</action>
+  <recipient>svirskasr@janelia.hhmi.org</recipient>
+  <regex> failed </regex>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

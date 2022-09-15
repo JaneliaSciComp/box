@@ -1,0 +1,86 @@
+# ****************************************************************************
+# Resource name:  flylightpolarity.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.1
+# Date released:  2016-11-15
+# Description:    This grammar will parse the qualified stack names
+#                 (date/file) for Fly Light Polarity images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: date '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Some aliases to match other labs
+  my @namedata = split(/\_/, $data{lsmname});
+  $data{transformantid} = $data{lsmname};
+
+  # Base directories
+  my $BASE = '/groups/flylight/flylight/polarity';
+  if ((! -e $BASE) || (-l $BASE)) {
+    $BASE = '/groups/flylight/flylight/polarity';
+  }
+  $data{img_application} = 'flylight-image';
+  $data{family} = $data{designator} = 'flylight_polarity';
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $BASE . '/confocalStacks/' . $data{date};
+  $data{lsm_file} = $data{source_file} = $data{file};
+  $data{lsm_rel} = join '/',('..')x5,'confocalStacks',$data{date};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{sage_image} = join('/',@data{qw(date source_file)});
+  $data{short_file} = $no_ext;
+
+  # Line Name
+  my $line_name = "";
+  my $get_line_name_cmd = '/misc/local/pipeline/bin/get_sage_line_name ' . $data{date} . "/" . $data{lsm_file};
+  open (CMD3, "$get_line_name_cmd |");
+  while (my $output = <CMD3>) {
+       chomp($output);
+       if ($output) {
+               $line_name = $output;
+       }
+  }
+  close (CMD3);
+  $data{line} = $line_name;
+
+  # Area
+  my $area = "";
+  my $get_area_cmd = '/misc/local/pipeline/bin/get_sage_area ' . $data{date} . "/" . $data{lsm_file};
+  open (CMD5, "$get_area_cmd |");
+  while (my $output = <CMD5>) {
+        chomp($output);
+        if ($output eq "Brain") {
+                $area = "b";
+        }
+	if ($output eq "Ventral Nerve Cord") {
+		$area =	"v";
+	}
+  }
+  close (CMD5);
+  $data{area} = $area;
+  $data{organ} = $data{area};
+
+  $return = { $item[0] => join('/',$data{date},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+
+stack: lsmname
+{
+   $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+date: /\d{4}(?:0[1-9]|1[012])(?:0[1-9]|[12]\d|3[01])/ | <error: illegal date>
+lsmname: /[^\.]+/ | <error: illegal clipname>
+extension: 'lsm' | <error: illegal extension>

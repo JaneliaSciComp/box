@@ -1,0 +1,84 @@
+# ****************************************************************************
+# Resource name:  projtechres.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.1
+# Date released:  2016-11-15
+# Description:    This grammar will parse the qualified stack names
+#                 Project Technical Resources images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: date '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Some aliases to match other labs
+
+  my @namedata = split(/\_/, $data{lsmname});
+  $data{transformantid} = $data{lsmname};
+
+  # Base directories
+  my $BASE = '/groups/projtechres/projtechres';
+  $data{img_application} = 'flylight-image';
+  $data{designator} = 'projtechres';
+  my $SECONDARY = join '/',$BASE,'SecData';
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $BASE . '/confocalStacks/' . $data{date};
+  $data{lsm_file} = $data{source_file} = $data{file};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{sage_image} = join('/',@data{qw(date source_file)});
+  $data{short_file} = $no_ext;
+
+  # Get line
+  my $line_name = '';
+  my $cmd = join(' ','/misc/local/pipeline/bin/get_sage_line.py',$data{sage_image});
+  $data{command1} = $cmd;
+  open (CMD,"$cmd|");
+  while (my $output = <CMD>) {
+    $data{command1_result} .= $output;
+    chomp($output);
+    $line_name = $output if ($output);
+  }
+  close(CMD);
+  $data{line} = $line_name;
+  # Get image properties
+  $cmd = join(' ','/misc/local/pipeline/bin/get_sage_imageprop.py',$data{sage_image},'"*"');
+  $data{command2} = $cmd;
+  open (CMD,"$cmd|");
+  while (my $output = <CMD>) {
+    $data{command2_result} .= $output;
+    chomp($output);
+    my($type,$value) = split(/\t/,$output,2);
+    $data{$type} = $value;
+  }
+  close(CMD);
+
+  $return = { $item[0] => join('/',$data{date},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+date: year '/' month '/' day
+{
+   $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+stack: lsmname
+{
+   $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+year: /\d{4}/ | <error: illegal year>
+month: /(?:0[1-9]|1[012])/ | <error: illegal month>
+day: /(?:0[1-9]|[12]\d|3[01])/ | <error: illegal day>
+lsmname: /[^\.]+/ | <error: illegal LSM>
+extension: 'lsm' | <error: illegal extension>

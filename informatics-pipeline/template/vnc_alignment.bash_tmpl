@@ -1,0 +1,69 @@
+#!/bin/bash
+
+echo "Job started at " `date`
+
+# Make sure the .lsm file exists
+if [ -e $grammar{lsm_dir}/$grammar{lsm_file} ]
+then
+#  chmod 555 $grammar{lsm_dir}/$grammar{lsm_file}
+   echo "File exists"
+else
+  echo -e "Error: image $grammar{lsm_dir}/$grammar{lsm_file} does not exist"
+  exit -1
+fi
+
+if [ ! -e $grammar{registration_dir} ]
+  then
+    mkdir -p -m 755 $grammar{registration_dir}
+fi
+
+TARGET=/groups/sciserv/flyolympiad/vnc_align/target/flyVNCtemplate2.raw
+MARKER=/groups/sciserv/flyolympiad/vnc_align/target/flyVNCtemplate3.marker
+
+#JBA rigid alignment ----------------------------------------------------------
+echo "+----------------------------------------------------------------------+"
+echo "| Running JBA rigid alignment                                          |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+xvfb-run /groups/sciserv/flyolympiad/vnc_align/toolkit/JBA/brainaligner -t $TARGET -s $grammar{lsm_dir}/$grammar{lsm_file}  -o $grammar{registration_dir}/$grammar{rigid_raw}  -w 0 -C 1 -c 1 -B 1024 -Y
+STOP=`date '+%F %T'`
+/home/svirskasr/workspace/sage/bin/add_operation.pl -operation jba_rigid_alignment -name "$grammar{sage_image}"  -start "$START" -stop "$STOP" -operator $grammar{userid} -program '/groups/sciserv/flyolympiad/vnc_align/toolkit/JBA/brainaligner' -version '1.000' -parm alignment_target="$TARGET"
+
+#Principal skeleton detection -------------------------------------------------
+#echo "+----------------------------------------------------------------------+"
+#echo "| Running Principal skeleton detection                                 |"
+#echo "+----------------------------------------------------------------------+"
+#xvfb-run /groups/sciserv/flyolympiad/vnc_align/toolkit/Vaa3D/vaa3d -x principal_skeleton -f detect  -i $grammar{registration_dir}/$grammar{rigid_raw} /groups/sciserv/flyolympiad/vnc_align/target/ps_ini3.marker  /groups/sciserv/flyolympiad/vnc_align/target/vnc_principalskeleton3.domain -o $grammar{registration_dir}/$grammar{rigid_marker} $grammar{registration_dir}/$grammar{rigid_swc} -p 1 1 500 0.01 1 15 1 1
+
+#Principal skeleton based image warping ---------------------------------------
+#echo "+----------------------------------------------------------------------+"
+#echo "| Running Principal skeleton based image warping                       |"
+#echo "+----------------------------------------------------------------------+"
+#xvfb-run /groups/sciserv/flyolympiad/vnc_align/toolkit/Vaa3D/vaa3d -x principal_skeleton -f warp -i $grammar{registration_dir}/$grammar{rigid_raw} $grammar{registration_dir}/$grammar{rigid_marker} /groups/sciserv/flyolympiad/vnc_align/target/flyVNCtemplate2.raw /groups/sciserv/flyolympiad/vnc_align/target/ps_ini3.marker /groups/sciserv/flyolympiad/vnc_align/target/vnc_principalskeleton3.domain -o $grammar{registration_dir}/$grammar{rigid_ps_raw} -p 2.0 5 200 1 
+
+#JBA local alignment ----------------------------------------------------------
+echo "+----------------------------------------------------------------------+"
+echo "| Running JBA local alignment                                          |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+xvfb-run /groups/sciserv/flyolympiad/vnc_align/toolkit/JBA/brainaligner -t $TARGET -s $grammar{registration_dir}/$grammar{rigid_raw} -L $MARKER -o $grammar{registration_dir}/$grammar{rigid_ps_local_raw}  -w 10 -C 1 -c 1 -H 2 -B 1024 
+STOP=`date '+%F %T'`
+/home/svirskasr/workspace/sage/bin/add_operation.pl -operation jba_local_alignment -name "$grammar{sage_image}"  -start "$START" -stop "$STOP" -operator $grammar{userid} -program '/groups/sciserv/flyolympiad/vnc_align/toolkit/JBA/brainaligner' -version '1.000' -parm alignment_markers="$MARKER" -parm alignment_target="$TARGET"
+
+# Clean up to save space ------------------------------------------------------
+#rm -f $grammar{registration_dir}/$grammar{rigid_raw}
+#rm -f $grammar{registration_dir}/$grammar{rigid_swc}
+#rm -f $grammar{registration_dir}/$grammar{rigid_marker}
+#rm -f $grammar{registration_dir}/$grammar{rigid_ps_raw}
+
+# Yang's vnc aligner ----------------------------------------------------------
+#TARGET=/groups/scicomp/jacsData/yuTest/VNCAlign/template/flyVNCtemplate2.raw
+#TARGET_MARKER=/groups/scicomp/jacsData/yuTest/VNCAlign/template/flyVNCtemplate2.marker
+#TARGET_PRINCIPALSKELETON_MARKER=/groups/scicomp/jacsData/yuTest/VNCAlign/template/flyVNCtemplatePrincipalSkeleton.marker
+#TARGET_PRINCIPALSKELETON_DOMAIN=/groups/scicomp/jacsData/yuTest/VNCAlign/template/flyVNCtemplatePrincipalSkeleton.domain
+#/groups/scicomp/jacsData/yuTest/VNCAlign/flyVNCaligner.sh $TARGET $TARGET_MARKER $TARGET_PRINCIPALSKELETON_MARKER $TARGET_PRINCIPALSKELETON_DOMAIN $grammar{lsm_dir}/$grammar{lsm_file} $grammar{registration_dir}/$grammar{short_file}
+
+echo "Job completed at " `date`
+
+cd /groups/sciserv/flyolympiad/vnc_align/pipeline/
+trap "rm -f $0" 0

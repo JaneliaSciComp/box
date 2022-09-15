@@ -1,0 +1,176 @@
+# ****************************************************************************
+# Resource name:  rubin_ssplit.gra      
+# Written by:     Eric Trautman
+# Revision level: 1.0
+# Date released:  2013-03-13
+# Description:    This grammar will parse the qualified stack names
+#                 (date/file) for Rubin Stabilized Split images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: date '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Some aliases to match other labs
+  my @namedata = split(/\_/, $data{lsmname});
+  $data{transformantid} = $data{lsmname};
+
+  # Base directories
+  my $ARCHIVE_BASE = '/groups/flylight/flylight/ssplit/data';
+  my $BASE = '/groups/flylight/flylight/ssplit/data';
+  $data{img_application} = 'rubin-image';
+  $data{designator} = $data{family} = 'rubin_ssplit';
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $ARCHIVE_BASE . '/confocalStacks/' . $data{date};
+  $data{lsm_file} = $data{source_file} = $data{file};
+  $data{lsm_rel} = join '/',('..')x5,'confocalStacks',$data{date};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{sage_image} = join('/',@data{qw(date source_file)});
+  $data{short_file} = $no_ext;
+
+  # Line Name
+  my $line_name = "";
+  my $get_line_name_cmd = '/misc/local/pipeline/bin/get_sage_line_name '
+                          . $data{date} . "/" . $data{lsm_file};
+  $data{command1} = $get_line_name_cmd;
+  open (CMD1,"$get_line_name_cmd |");
+  while (my $output = <CMD1>) {
+    $data{command1_output} = $output;
+    chomp($output);
+    if ($output) {
+      $line_name = $output;
+    }
+  }
+  close (CMD1);
+  $data{line} = $line_name;
+
+  # Area
+  my $area = "";
+  my $get_area_cmd = '/misc/local/pipeline/bin/get_sage_area '
+                     . $data{date} . '/' . $data{lsm_file};
+  $data{command2} = $get_area_cmd;
+  open (CMD2,"$get_area_cmd |");
+  while (my $output = <CMD2>) {
+    $data{command2_output} = $output;
+    chomp($output);
+    $area = lc(substr($output,0,1));
+  }
+  close (CMD2);
+  $data{area} = $area;
+  $data{organ} = $data{area};
+  $data{is_tiled} = 0;
+  $data{channel_one_color} = "black";
+  $data{channel_two_color} = "Green";
+
+  # Generate a random number
+  my $range = 998;
+  my $minimum = 1;
+  my $random_number = int(rand($range)) + $minimum;
+  $data{random_num} = $random_number;
+
+  # Channel Assignments
+  my $list_img_channel_cmd = '/misc/local/pipeline/bin/list_img_channels_by_dye '
+                             . '-method dye -file '
+                             . $data{lsm_dir} . '/' .  $data{lsm_file};
+  my ($red_chan,$green_chan,$blue_chan,$ref_chan_num,$detect,$x,$y,$z);
+  $data{command3} = $list_img_channel_cmd;
+  open(CMD3,"$list_img_channel_cmd |");
+  my $detect = 0;
+  while (my $output = <CMD3>) {
+    chomp($output);
+    $data{command3_output} = $output;
+    unless ($output =~ /Error/) {
+        ($red_chan,$green_chan,$blue_chan,$ref_chan_num,$x,$y,$z) = split(/\t/,$output);
+        $detect = 1;
+    }
+  }
+  close(CMD3);
+  $data{detect_chan} = $detect;
+  $data{lsm_red_chan} = $red_chan;
+  $data{lsm_green_chan} =  $green_chan;
+  $data{lsm_blue_chan} = $blue_chan;
+  $data{lsm_reference_channel_index} = $ref_chan_num;
+  $data{voxel_x} = $x;
+  $data{voxel_y} = $y;
+  $data{voxel_z} = $z;
+
+  # Orientation
+  $data{reverse_zstack} = 0;
+
+  # Secondary data
+  my $SECONDARY = $BASE;
+  # Common-structure directories
+  foreach (qw(projection reference registration tiff translation)) {
+    my $dir = join('/',$SECONDARY,($_ . 's'),$data{date});
+    my $loc = join('/',($_ . 's'),$data{date});
+    $data{$_ . '_dir'} = $dir;
+    $data{$_ . '_loc'} = $loc;
+    $data{$_ . '_rel'} = join '/',('..')x5,'SecData',$loc;
+  }
+  $data{short_file} = $no_ext;
+  # Projections
+  $data{projection_all_file} = $data{short_file} . '_total.png';
+  $data{projection_pattern_file} = $data{short_file} . '_ch2_total.png';
+  $data{projection_reference_sum} = $data{short_file} . '_ref_sum.png';
+  $data{projection_ref_sum_file} = $data{projection_reference_sum};
+  # Translations
+  $data{translation_transient} = $data{short_file} . '.avi';
+  $data{translation_file} = $data{short_file} . '.t.mp4';
+  # TIFF and JPG files
+  $data{tiff_file} = $data{short_file} . '.tif';
+  $data{projection_file} = $data{short_file} . '_total.png';
+  # Registrations
+  $data{registered_global_raw} = $data{short_file} . '.raw.tmp_GF.raw';
+  $data{registered_global_tiff} = $data{short_file} . '.reg.global.raw';
+  $data{projection_global_registered} = $data{short_file} . '.reg.global.png';
+  $data{registered_local_raw} = $data{short_file} . '.raw.tmp_GF_local.raw';
+  $data{registered_local_tiff} = $data{short_file} . '.reg.local.raw';
+  $data{projection_local_registered} = $data{short_file} . '.reg.local.png';
+  $data{projection_local_registered_file} = $data{projection_local_registered};
+  $data{registered_loop1_tiff} = $data{short_file} . '.loop1.raw';
+  $data{registered_loop2_tiff} = $data{short_file} . '.loop2.raw';
+  $data{registered_loop2_projection} = $data{short_file} . '.loop2.png';
+  $data{registered_quality} = $data{short_file} . '.loop2.raw_matching_quality.csv';
+  # Registration data to index
+  $data{registration_local_tiff_file} = $data{registered_local_tiff};
+  $data{registration_loop2_tiff_file} = $data{registered_loop2_tiff};
+  $data{registration_quality_file} = $data{registered_quality};
+  $data{registration_subject_file} = $data{short_file} . '.loop2.raw_subject.csv';
+  $data{registration_target_file} = $data{short_file} . '.loop2.raw_target.csv';
+  # Link directories
+  $data{link_dirs} = join ' ',@data{map { $_.'_link' }
+      qw(lsm tiff projection reference registration translation)};
+  # Secondary data directories
+  $data{secdata_dirs} = join ' ',@data{map { $_.'_dir' }
+      qw(projection reference registration tiff translation)},$data{link_dirs};
+  $data{secdata_store} = join(',',qw(projection_all projection_local_registered
+                                     projection_pattern projection_ref_sum
+                                     translation registration_local_tiff
+                                     registration_loop2_tiff
+                                     registration_quality registration_subject
+                                     registration_target));
+
+  $return = { $item[0] => join('/',$data{date},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+
+stack: lsmname
+{
+   $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+date: /\d{4}(?:0[1-9]|1[012])(?:0[1-9]|[12]\d|3[01])/ | <error: illegal date>
+lsmname: /[^\.]+/ | <error: illegal clipname>
+extension: 'lsm' | <error: illegal extension>

@@ -1,0 +1,391 @@
+#!/bin/bash
+
+# Send a lab's stacks to STDOUT. This script takes two parameters:
+# 1) the lab name in lowercase.
+# 2) (optional) aging in days
+
+case $1 in
+# Baker Lab
+bakerbiorad)
+cd /groups/baker/bakerlab/MicroscopeData;
+find BioRad_Confocal_Stacks/ -name "*.tif";
+;;
+baker)
+#cd /groups/baker/bakerlab/MicroscopeData;
+#find Baker_Confocal_Stacks/ -name "*.lsm";
+mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT CONCAT('Baker_Confocal_Stacks/',name) FROM image_vw WHERE id NOT IN (SELECT image_id FROM secondary_image_vw WHERE product='projection_all') AND family='baker_lab'"
+;;
+bakerdv)
+cd /groups/baker/bakerlab/Dias/Behavior;
+find . -name "*.dv" | sed 's/^.\///' | grep -v '\/\.';
+;;
+baker_vaughandv)
+cd /groups/baker/bakerlab/Alex/Receptivity;
+find . -name "*.dv" | sed 's/^.\///' | grep '.iMovieProject' | grep -v '\/\.' | grep -v '\/.*iMovieProject\/';
+;;
+
+# Descending Interneuron
+descending_interneurons)
+ls /groups/ditp/ditp >/dev/null
+if [ -z $2 ]
+then find /groups/ditp/ditp/confocalStacks/ -mindepth 2 -maxdepth 2 -type f -name "*GMR*.lsm" | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+else find /groups/ditp/ditp/confocalStacks/ -mindepth 2 -maxdepth 2 -type f -name "*GMR*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+fi
+;;
+
+# Fly Light R&D
+flylightrd)
+mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE id NOT IN (SELECT image_id FROM secondary_image_vw WHERE product='projection_all') AND family='flylight_rd'"
+;;
+rubinrd)
+cd /groups/rubin/rubinimg/RDconfocalStacks;
+find -name "*.lsm" | sed 's/^.\///' | grep -v '\/\.';
+;;
+
+# Fly Olympiad processing
+flyolympiadloadedoutput)
+cd "/groups/sciserv/flyolympiad/Olympiad_Screen/box/04_loaded";
+ls -1 | perl -ne 's/\n//; $output = "$_/Output"; if (-e $output) { print "$output\n"; }';
+;;
+flyolympiadexp)
+cd "/groups/sciserv/flyolympiad/Olympiad_Screen/box/02_fotracked";
+#find -L . -name "*.exp" | sed 's/^.\///' | grep -v '\/\.';
+ls | perl -ne 's/\n//; $expfile = "$_/$_.exp"; if (-e $expfile) { print "$expfile\n"; } ';
+;;
+flyolympiadmerged)
+cd "/groups/sciserv/flyolympiad/Olympiad_Screen/box/02_fotracked";
+find -L . -name "success_*.mat" | sed 's/^.\///' | grep -v '\/\.';
+;;
+flyolympiadfotrak)
+cd "/groups/sciserv/flyolympiad/Olympiad_Screen/box/02_fotracked";
+#find -L -name "Output" |  sed 's/^.\///' | grep -v '\.'
+ls | perl -ne 's/\n//; $dir = "$_/Output"; if (-e $dir) { print "$dir\n"; }';
+;;
+flyolympiadtubeaviextract)
+cd "/groups/sciserv/flyolympiad/Olympiad_Screen/box/00_incoming";
+find -L . -name "*seq*.avi" | grep -v "_tube" | sed 's/^.\///' | grep -v '\/\.';
+;;
+flyolympiadavi)
+cd "/groups/sciserv/flyolympiad/Olympiad_Screen/box/00_incoming";
+find -L . -maxdepth 3 -name "*tube*.avi" | sed 's/^.\///' | grep -v '\/\.';
+;;
+flyolympiadsbfmf)
+cd "/groups/sciserv/flyolympiad/Olympiad_Screen/box/01_sbfmf_compressed";
+find -L . -name "*.sbfmf" | sed 's/^.\///' | grep -v '\/\.';
+;;
+flyolympiadcheckann)
+cd "/groups/sciserv/flyolympiad/Olympiad_Screen/box/02_tracked";
+find . -name "*.ann" | sed 's/^.\///' | grep -v '\/\.';
+;;
+flyolympiadboxavis)
+cd "/groups/sciserv/flyolympiad/Olympiad_Screen/box/05_analyzed";
+ls -1 | perl -ne 's/\n//; $compsum = "$_/Output/comparison_summary.pdf"; if (-e $compsum) { print "$_\n"; }';
+;;
+flyolympiad_bowl_incoming)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/fly_bowl/00_incoming/
+ls | perl -ne 's/\n//; next if ($_ =~ /notstarted/); $ufmf_path = "$_/movie.ufmf"; if (-e $ufmf_path) { print "$ufmf_path\n"; }';
+;;
+flyolympiad_bowl_tracked)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/fly_bowl/01_tracked/
+ls | perl -ne 's/\n//; next if ($_ =~ /notstarted/); $ufmf_path = "$_/ctrax_results.mat"; if (-e $ufmf_path) { print "$ufmf_path\n"; }';
+;;
+flyolympiad_bowl_register)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/fly_bowl/02_register/
+ls | perl -ne 's/\n//; next if ($_ =~ /notstarted/); $ufmf_path = "$_/registered_trx.mat"; if (-e $ufmf_path) { print "$ufmf_path\n"; }';
+;;
+flyolympiad_bowl_classifysex)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/fly_bowl/03_classifysex/
+ls | perl -ne 's/\n//; next if ($_ =~ /notstarted/); $ufmf_path = "$_/sexclassifier_diagnostics.txt"; if (-e $ufmf_path) { print "$ufmf_path\n"; }';
+;;
+flyolympiad_bowl_perframefeatures)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/fly_bowl/04_perframefeatures/
+ls | perl -ne 's/\n//; $path = "$_/perframe/closestfly_nose2ell_angle_30tomin30.mat"; if (-e $path) { print "$path\n"; }';
+;;
+flyolympiad_bowl_computeperframestats)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/fly_bowl/05_computeperframestats/
+ls | perl -ne 's/\n//; $path = "$_/hist_perframe.mat"; if (-e $path) { print "$path\n"; }';
+;;
+flyolympiad_bowl_extradiagnostics)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/fly_bowl/06_extradiagnostics/
+# Temporarily allowing movies to be generated without running per-frame stats or extra diagnostics. (FMM 2013-02-13)
+#ls | perl -ne 's/\n//; $path = "$_/bias_diagnostics.txt"; if (-e $path) { print "$path\n"; }';
+ls | perl -ne 's/\n//; $path = "$_/perframe/closestfly_nose2ell_angle_30tomin30.mat"; if (-e $path) { print "$_/bias_diagnostics.txt\n"; }';
+;;
+flyolympiad_box)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/box/box_data
+find -mindepth 2 | egrep '\.(avi|pdf|png|sbfmf)$' | sed 's/\.\///'
+;;
+
+flyolympiad_trik)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/trikinetics/pipeline/060_prod_images/
+find -mindepth 2 | egrep '\.(pdf|png)$' | sed 's/\.\///'
+;;
+flyolympiad_gap)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/gap_crossing/
+find -mindepth 2| egrep '\.(avi|png)$' | sed 's/\.\///'
+;;
+flyolympiad_bowl)
+cd /groups/sciserv/flyolympiad/Olympiad_Screen/fly_bowl/bowl_data/
+find -mindepth 2| egrep '\.(sbfmf|png|avi)$' | sed 's/\.\///'
+;;
+
+# Lee Lab
+leet)
+cd /groups/leet/leetconfocal;
+find confocalStacks/ -name "*.lsm";
+find discovery_confocalStacks/ -name "*.lsm";
+;;
+leet_chacrm)
+cd /groups/leet/leetconfocal;
+find confocalStacks/ -name "*.lsm";
+;;
+leet_discovery)
+cd /groups/leet/leetconfocal;
+find discovery_confocalStacks/ -name "*.lsm";
+;;
+
+# Richard Mann Lab
+mann)
+cd /groups/rubin/data0/rubinlab/External_Images/Mann
+find . -name "*.jpg" | sed 's/^\.\///'
+;;
+
+# Rubin Lab
+rubin)
+if [ -z $2 ]
+then find /tier2/flylight/screen/confocalStacks/ -mindepth 2 -maxdepth 2 -type f -name "*GMR*.lsm" | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+elif [ $2 = "new" ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='rubin_chacrm' AND capture_date IS NULL AND (path is NULL OR path NOT LIKE '%bz2')";
+elif [ $2 = "all" ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='rubin_chacrm' AND (path is NULL OR path NOT LIKE '%bz2')";
+else find /tier2/flylight/screen/confocalStacks/ -mindepth 2 -maxdepth 2 -type f -name "*GMR*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+fi
+;;
+
+# Dickson Lab
+dickson)
+if [ -z $2 ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='dickson' AND (path is NULL OR path NOT LIKE '%bz2')";
+elif [ $2 = "new" ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='dickson' AND capture_date IS NULL AND (path is NULL OR path NOT LIKE '%bz2')";
+else find /tier2/flylight/dickson/confocalStacks/ -mindepth 2 -maxdepth 2 -type f -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+fi
+;; 
+
+# Dickson Lab (Vienna-generated imagery)
+dickson_vienna)
+ls /groups/flylight/flylight/dickson/Vienna >/dev/null
+find /groups/flylight/flylight/dickson/Vienna/confocalStacks/ -mindepth 2 -maxdepth 2 -type f -name "*.lsm" | sed 's/.*confocalStacks\///';
+;; 
+
+# Rubin Lab 1
+rubinlab1)
+ls /groups/rubin/rubinimg/rubin_lab_1/confocalStacks >/dev/null
+if [ -z $2 ]
+then find /groups/rubin/rubinimg/rubin_lab_1/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+else find /groups/rubin/rubinimg/rubin_lab_1/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+fi
+;;
+
+# Rubin Lab 2
+rubinlab2)
+ls /groups/rubin/rubinimg/rubin_lab_2/confocalStacks >/dev/null
+if [ -z $2 ]
+then find /groups/rubin/rubinimg/rubin_lab_2/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+else find /groups/rubin/rubinimg/rubin_lab_2/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+fi
+;;
+
+# Rubin Lab 3
+rubinlab3)
+ls /groups/rubin/rubinimg/rubin_lab_3/confocalStacks >/dev/null
+if [ -z $2 ]
+then find /groups/rubin/rubinimg/rubin_lab_3/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+else find /groups/rubin/rubinimg/rubin_lab_3/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+fi
+;;
+
+# Rubin Lab 4
+rubinlab4)
+ls /groups/rubin/rubinimg/rubin_lab_2/confocalStacks >/dev/null
+if [ -z $2 ]
+then find /groups/rubin/rubinimg/rubin_lab_4/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+else find /groups/rubin/rubinimg/rubin_lab_4/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+fi
+;;
+
+# Rubin Lab 5
+rubinlab5)
+ls /groups/rubin/rubinimg/rubin_lab_2/confocalStacks >/dev/null
+if [ -z $2 ]
+then find /groups/rubin/rubinimg/rubin_lab_5/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+else find /groups/rubin/rubinimg/rubin_lab_5/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+fi
+;;
+
+# Rubin Stabilized Split
+rubin_ssplit)
+if [ -z $2 ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='rubin_ssplit' AND (path is NULL OR path NOT LIKE '%bz2')";
+elif [ $2 = "new" ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='rubin_ssplit' AND capture_date IS NULL AND (path is NULL OR path NOT LIKE '%bz2')";
+elif [ $2 == "file" ]
+then find /tier2/flylight/ssplit/data/confocalStacks -mindepth 2 -maxdepth 2 -type f -name "*.lsm" | sed 's/.*confocalStacks\///';
+else find /tier2/flylight/ssplit/data/confocalStacks -mindepth 2 -maxdepth 2 -type f -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///';
+fi
+;;
+
+# Flylight Collaboration
+flylight_collaborations)
+ls /groups/flylight/flylight/collaborations/confocalStacks >/dev/null
+if [ -z $2 ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='flylight_collaborations' AND (path is NULL OR path NOT LIKE '%bz2')"
+elif [ $2 == "new" ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='flylight_collaborations' AND capture_date IS NULL AND (path is NULL OR path NOT LIKE '%bz2')"
+elif [ $2 == "file" ]
+then find /groups/flylight/flylight/collaborations/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" | sed 's/.*confocalStacks\///' | grep '^[0-9]'
+else find /groups/flylight/flylight/collaborations/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]'
+fi
+;;
+
+# Lee Lab Central Brain Lineage
+leet_central_brain_lineage)
+mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='leet_central_brain_lineage' AND (path is NULL OR path NOT LIKE '%bz2')"
+;;
+
+# Lee Lab Pan Lineage
+leet_pan_lineage)
+mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='leet_pan_lineage' AND (path is NULL OR path NOT LIKE '%bz2')"
+;;
+
+# Project Technical Resources
+projtechres)
+if [ -z $2 ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='projtechres' AND (path is NULL OR path NOT LIKE '%bz2')"
+elif [ $2 == "new" ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='projtechres' AND capture_date IS NULL AND (path is NULL OR path NOT LIKE '%bz2')"
+elif [ $2 == "file" ]
+then find /tier2/projtechres/confocalStacks/ -mindepth 4 -maxdepth 4 -type f -name "*.lsm" | sed 's/.*confocalStacks\///'
+else find /tier2/projtechres/confocalStacks/ -mindepth 4 -maxdepth 4 -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]'
+fi
+;;
+# Flylight polarity
+flylight_polarity)
+if [ -z $2 ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='flylight_polarity' AND path NOT LIKE '%bz2'"
+elif [ $2 == "new" ]
+then mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='flylight_polarity' AND capture_date IS NULL AND path NOT LIKE '%bz2'"
+elif [ $2 == "file" ]
+then find /tier2/flylight/polarity/confocalStacks/ -type f -name "*.lsm" | sed 's/.*confocalStacks\///'
+else find /tier2/flylight/polarity/confocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]'
+fi
+;;
+# Flylight Flip
+flylight_flip)
+if [ -z $2 ]
+then find /tier2/flylight/flip/confocalStacks/ -mindepth 2 -maxdepth 2 -type f -name "*.lsm" | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+else find /tier2/flylight/flip/confocalStacks/ -mindepth 2 -maxdepth 2 -type f -name "*.lsm" -mtime -$2 | sed 's/.*confocalStacks\///' | grep '^[0-9]';
+fi
+;;
+# Flylight Flip Merge Images to Tiles
+flylightfliptilesinfo)
+cd /groups/flylight/flylight/flip/SecData/tiles/
+ls | perl -ne 's/\n//; $info_path = "$_/slide_group_info.txt"; if (-e $info_path) { print "$_/slide_group_info.txt\n"; }';
+;;
+# Flylight Flip Merge Images to Tiles
+flylightfliptiles)
+cd /groups/flylight/flylight/flip/SecData/tiles/
+ls | perl -ne 's/\n//; $path = "$_/merged"; if (-e $path) { print "$_/merged\n"; }';
+;;
+# Flylight Flip
+flylightflipstitchinfo)
+cd /groups/flylight/flylight/flip/SecData/stitch/
+ls | perl -ne 's/\n//; $info_path = "$_/slide_group_info.txt"; if (-e $info_path) { print "$_/slide_group_info.txt\n"; }';
+;;
+# Flylight Flip
+flylightflipstitchraw)
+cd /groups/flylight/flylight/flip/SecData/stitch/
+find * | grep stitched.v3draw
+;;
+# Flylight Split
+flylight_split)
+mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='flylight_split' AND path NOT LIKE '%bz2'"
+
+;;
+# FlyEM Align
+flyem_align)
+cd /groups/flyem/data/
+ls -d *-FIB-* | perl -ne 'chomp(); $dir = "$_/raw"; if (-e $dir) { print "$dir\n"; }'
+;;
+# Heberlein central brain
+heberlein_central_brain)
+mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT name FROM image_vw WHERE family='heberlein_central_brain' AND capture_date IS NULL"
+;;
+# Simpson Lab
+simpson)
+cd /groups/simpson/home/MicroscopeData;
+find GAL4_confocal_stacks/ -name "*.lsm" -size +1k;
+find Immunohistochemistry_Optimizing/ -name "*.lsm" -size +1k;
+#find Waffles_confocal_stacks/ -name "*.lsm" -size +1k;
+find Lex_confocal_stacks/ -name "*.lsm" -size +1k;
+#find Brainbow_confocal_stacks/ -name "*.lsm" -size +1k;
+#find GAL4_Larvae_confocal_stacks/ -name "*.lsm" -size +1k;
+#find Antibodies_Confocal_Stacks/ -name "*.lsm" -size +1k;
+#find GAL4_Larva_Marta_confocal_stacks/ -name "*.lsm" -size +1k;
+#find Lab_confocal_stacks/ -name "*.lsm" -size +1k;
+;;
+
+simpson_gal4)
+cd /groups/simpson/home/MicroscopeData/GAL4_confocal_stacks/;
+find * -name "*.lsm";
+;;
+
+simpson_grooming)
+cd /groups/simpson/home/MicroscopeData/Grooming_primary_data/
+find . -mindepth 5 -maxdepth 5 | sed 's/^\.\///' | fgrep -v '/.' | egrep "\.(avi|tif|tiff|mov|mp4|txt)$"
+;;
+
+# Tjian Lab
+tjian_transient)
+cd /groups/tjian/tjianlab/darzacq/live_cell_imaging/raw_tiffs
+find . -name "*.TIF" | grep -v '_thumb' | grep ' mCherry ' | sed 's/^.\///'
+;;
+tjian_final)
+cd /groups/tjian/tjianlab/darzacq/live_cell_imaging/transient_tiffs
+find . -name "*.jpg" | sed 's/_t[0-9][0-9]*\.jpg//' | sed 's/^.\///' | sort | uniq
+;;
+
+# Truman Lab
+truman)
+ls /tier2/flylight/LarvalScreen/Rubin_Line_Confocals >/dev/null
+find /tier2/flylight/LarvalScreen/Rubin_Line_Confocals/ -mindepth 2 -maxdepth 2 -name "*.lsm" | sed 's/.*Rubin_Line_Confocals\///' | grep -v "/tiles/" | grep '^[Cc]onfocal ' | sort
+;;
+truman_vt)
+ls /tier2/flylight/LarvalScreen/Rubin_Line_Confocals >/dev/null
+find /tier2/flylight/LarvalScreen/Rubin_Line_Confocals/ -mindepth 2 -maxdepth 2 -name "*.lsm" | sed 's/.*Rubin_Line_Confocals\///' | grep -v "/tiles/" | grep '^Confocal_.*VT\/VT' | sort >/tmp/fsf.$$.tmp
+mysql --silent -h mysql3 -u sageRead -psageRead sage -e "SELECT DISTINCT i.name FROM image_data_mv i JOIN secondary_image s ON (i.id=s.image_id) WHERE i.family='truman_vt'" | sort >/tmp/fsd.$$.tmp
+comm -3 /tmp/fsf.$$.tmp /tmp/fsd.$$.tmp
+/bin/rm /tmp/fsf.$$.tmp /tmp/fsd.$$.tmp >/dev/null
+;;
+truman_single_neuron) 
+find /tier2/flylight/LarvalScreen/SingleNeuron/Single\ neuron\ imagery/Lines/ -type f -name "*.lsm" | grep -v tiles
+;;
+
+# Zlatic Lab
+zlatic)
+cd /groups/zlatic/zlaticimg
+find peripheralConfocalStacks/ -mindepth 2 -maxdepth 2 -name "*.lsm" | grep "Tile";
+;;
+zlatic_hires)
+cd /groups/zlatic/zlaticimg
+find highResolutionsForSAGE/ -mindepth 4 -maxdepth 4 -name "*.tif"
+;;
+zlatic_medial)
+cd /groups/zlatic/zlaticimg
+find lines*/ -mindepth 4 -maxdepth 4 -name "*tif" | grep sec_data
+;;
+zlatic_medial_hires)
+cd /groups/zlatic/zlaticimg
+find hiRes/ -mindepth 4 -maxdepth 4 -name "*.tif" | grep stack_TIFF
+;;
+esac

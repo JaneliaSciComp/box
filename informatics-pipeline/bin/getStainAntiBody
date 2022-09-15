@@ -1,0 +1,53 @@
+#!/usr/bin/perl
+
+use strict;
+use DBI;
+my $dsn = "dbi:mysql:dbname=sage;host=mysql3;port=3306";
+my $username = "sageRead";
+my $password = "sageRead";
+
+my $dbh = DBI->connect( $dsn, $username, $password )
+    or die("unable to open db handle");
+
+my $image_name = $ARGV[0];
+
+my $sql = qq~
+select p.value
+from image i, image_property p, cv_term c
+where i.id = p.image_id 
+and p.type_id = c.id 
+and c.name = "stain_antibody"
+and i.name = '$image_name'
+~;
+
+my @toarray = do_sql($dbh, $sql);
+if ($toarray[0]) {
+	print "$toarray[0]\n";
+}
+
+exit;
+
+sub do_sql {
+    my($dbh,$query,$delimeter) = @_;
+    my($statementHandle,@x,@results);
+    my(@row);
+
+    if($delimeter eq "") {
+        $delimeter = "\t"; # define a delimiter between each element in a row.
+    }
+
+    $statementHandle = $dbh->prepare($query); # prepare query
+    if ( !defined $statementHandle) {
+        print "Cannot prepare statement: $DBI::errstr\n"; # error in db connection
+    }
+
+    $statementHandle->execute() || print "failed query: $query\n"; #execute query
+
+    while ( @row = $statementHandle->fetchrow() ) { # while query runs, @row is assigned
+        push(@results,join($delimeter,@row)); # join contents of row with delimiter
+    }
+
+    #release the statement handle resources
+    $statementHandle->finish;
+    return(@results); #query results
+}

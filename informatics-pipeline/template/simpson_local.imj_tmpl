@@ -1,0 +1,43 @@
+// ***************************************************************************
+// Resource name:  simpson_registration.imj_tmpl
+// Written by:     Rob Svirskas
+// Revision level: 1.0
+// Date released:  2009-05-07
+// Description:    After processing, this ImageJ macro template template
+//                 implements the image processing flow for the Simpson Lab's
+//                 registered GAL4 images. ImageJ is used to create stack
+//                 projections.
+// Parameters:     NONE
+// ***************************************************************************
+
+// $grammar{registered_local_tiff}
+requires("1.38x");
+
+print("Sequence start for $grammar{registered_local_tiff}");
+loadLocalStack();
+print("Generating local projection");
+run("Z Project...","projection=[Max Intensity]");
+saveAs("Jpeg","$grammar{registration_dir}/$grammar{projection_local_registered}");
+close();
+close();
+print("  Local projection complete");
+terminateMacro();
+
+function loadLocalStack() {
+  print("Opening $grammar{registration_dir}/$grammar{registered_local_tiff}");
+  open("$grammar{registration_dir}/$grammar{registered_local_tiff}");
+  if (nImages() == 0) {
+    exit("Could not open $grammar{registered_local_tiff}");
+  }
+  print("Image opened");
+}
+
+function terminateMacro() {
+  while (nImages()>0) {
+    selectImage(nImages());
+    run("Close");
+  }
+  print("Sequence stop");
+  run("Quit","");
+  exit();
+}

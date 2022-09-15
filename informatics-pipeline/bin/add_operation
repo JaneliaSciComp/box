@@ -1,0 +1,162 @@
+#!/usr/bin/perl
+
+# Perl built-ins
+use strict;
+use warnings;
+use DBI;
+use Getopt::Long;
+use Pod::Text;
+use Pod::Usage;
+
+# JFRC
+use lib '/usr/local/lib/perl5/site_perl/5.8.8';
+use JFRC::Utils::SAGE qw(:all);
+
+# ****************************************************************************
+# * Constants                                                                *
+# ****************************************************************************
+my $DB = 'dbi:mysql:dbname=sage;host=';
+
+# ****************************************************************************
+# * Global variables                                                         *
+# ****************************************************************************
+# Command-line parameters
+my($DEV,$HOST,$NAME,$OPERATION,$OPERATOR,$PROGRAM,
+   $START,$STOP,$VERSION) = (0)x9;
+my %PARMS;
+
+# Database
+our $dbh;
+
+# ****************************************************************************
+# * Main                                                                     *
+# ****************************************************************************
+
+# Get the command-line parameters
+GetOptions('operation=s' => \$OPERATION,
+           'name=s'      => \$NAME,
+           'start=s'     => \$START,
+           'stop=s'      => \$STOP,
+           'host=s'      => \$HOST,
+           'operator=s'  => \$OPERATOR,
+           'program=s'   => \$PROGRAM,
+           'version=s'   => \$VERSION,
+           'parm=s'      => \%PARMS,
+           development   => \$DEV,
+           help          => \my $HELP)
+  or pod2usage(-1);
+
+# Display help and exit if the -help parm is specified
+pod2text($0),&terminateProgram() if ($HELP);
+
+# Insert record
+&initialize();
+&insertOperation(OPERATION => $OPERATION,
+                 NAME => $NAME,
+                 START => $START,
+                 STOP => $STOP,
+                 HOST => $HOST,
+                 OPERATOR => $OPERATOR,
+                 PROGRAM => $PROGRAM,
+                 VERSION => $VERSION,
+                 %PARMS,
+                );
+
+# We're done!
+&terminateProgram(0);
+
+# ****************************************************************************
+# * Subroutine:  initialize                                                  *
+# * Description: This routine will initialize CV term values for use with    *
+# *              ChaCRM. Values go in the %cvterm hash. It will also         *
+# *              initialize a database handle for use with the SAGE          *
+# *              database and configure XML.                                 *
+# *                                                                          *
+# * Parameters:  NONE                                                        *
+# * Returns:     NONE                                                        *
+# ****************************************************************************
+sub initialize
+{
+  # Initialize SAGE database
+  $DB .= ($DEV) ? 'dev-db' : 'mysql3';
+  $dbh = DBI->connect($DB,'sageApp','h3ll0K1tty',{RaiseError=>1,PrintError=>0});
+}
+
+
+# ****************************************************************************
+# * Subroutine:  terminateProgram                                            *
+# * Description: This routine will gracefully terminate the program. If a    *
+# *              message is passed in, we exit with a code of -1. Otherwise, *
+# *              we exit with a code of 0.                                   *
+# *                                                                          *
+# * Parameters:  message: the error message to print                         *
+# * Returns:     NONE                                                        *
+# ****************************************************************************
+sub terminateProgram
+{
+  my $message = shift;
+  print STDERR "$message\n" if ($message);
+  exit(($message) ? -1 : 0);
+}
+
+# ****************************************************************************
+# * POD documentation                                                        *
+# ****************************************************************************
+__END__
+
+=head1 NAME
+
+sage_loader - load data into SAGE
+
+=head1 SYNOPSIS
+
+add_operation -operation <operation> -name <name>
+              -start <start time> -stop <stop time>
+              [-development] [-help]
+
+=head1 DESCRIPTION
+
+This program will
+
+=head1 RUN INSTRUCTIONS
+
+The following options are supported:
+
+  -operation:   (required) data processing operation (CV term)
+  -name:        (required) image name
+  -start:       (required) start time (as YYYY-MM-DD HH:MI:SS)
+  -stop:        (required) stop time (as YYYY-MM-DD HH:MI:SS)
+  -development: (optional) run against development manifold
+  -help:        (optional) display usage help and exit
+Options must be separated by spaces.
+
+All output goes to STDERR.
+
+=head1 EXAMPLES
+
+The following command:
+
+  load_grooming_images -lab simpson
+
+=head1 EXIT STATUS
+
+The following exit values are returned:
+
+   0  Successful completion
+
+  -1  An error occurred
+
+=head1 BUGS
+
+None known.
+
+=head1 AUTHOR INFORMATION
+
+Copyright 2013 by Howard Hughes Medical Institute
+
+Author: Robert R. Svirskas, HHMI Janelia Farm Research Campus
+
+Address bug reports and comments to:
+svirskasr@janelia.hhmi.org
+
+=cut

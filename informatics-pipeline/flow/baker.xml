@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<!-- Grammar -->
+<grammar>/misc/local/pipeline/grammar/baker.gra</grammar>
+
+<!-- Command files to create -->
+<command_file type="ImageJ script" in_name="/misc/local/pipeline/template/baker.imj_tmpl" out_ext="txt" />
+<command_file type="Grid script" in_name="/misc/local/pipeline/template/baker.bash_tmpl" out_ext="bash" />
+
+<!-- Process flow -->
+<step>
+  <name>Rotation_check</name>
+  <description>Check for completed rotation</description>
+  <action>file_exists</action>
+  <file>$grammar{rotation_dir}/$grammar{rotation_file}</file>
+  <pass>Found_rotation</pass>
+  <fail>Grid</fail>
+</step>
+<step>
+  <name>Found_rotation</name>
+  <description>Bump "found" counter</description>
+  <action>bump_counter</action>
+  <counter>Rotations_found</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Grid</name>
+  <description>Submit generated .bash script to grid</description>
+  <action>grid</action>
+  <qsub_args>-N I$grammar{short_file} -b y -cwd -V</qsub_args>
+  <args>./$grammar{grid_script} $grammar{imagej_script}</args>
+  <stdout>LOGS/$grammar{short_file}.stdout</stdout>
+  <stderr>LOGS/$grammar{short_file}.stderr</stderr>
+  <pass>Good_submit</pass>
+  <fail>Bad_submit</fail>
+</step>
+<step>
+  <name>Good_submit</name>
+  <description>Bump "submit" counter</description>
+  <action>bump_counter</action>
+  <counter>Submissions</counter>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Bad_submit</name>
+  <action>mail_stack</action>
+  <recipient>svirskasr@janelia.hhmi.org</recipient>
+  <regex> failed </regex>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

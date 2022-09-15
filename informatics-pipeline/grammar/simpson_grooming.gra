@@ -1,0 +1,54 @@
+# ****************************************************************************
+# Resource name:  simpson_grooming.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2010
+# Description:    This grammar will parse the qualified file paths
+#                 (date/file) for the Simpson Lab's grooming images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: line '/' product '/' area '/' date '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Base directories
+  my $BASE = '/groups/simpson/MicroscopeData/Grooming_primary_data';
+  $data{dir} = join('/',@data{qw(line product area date)});
+  ($data{target_file} = $data{file}) =~ s/\.(?:tif|tiff)$/.jpg/;
+  ($data{target_file} = $data{file}) =~ s/\.avi$/.mp4/;
+  $data{source_path} = $data{target_path} = join('/',$BASE,@data{qw(dir file)});
+  ($data{target_path} = $data{source_path}) =~ s/\.(?:tif|tiff)$/.jpg/;
+  ($data{target_path} = $data{source_path}) =~ s/\.avi$/.mp4/;
+  $data{source} = 'JFRC';
+  $data{path} = $data{target_path};
+  $data{family} = 'simpson_lab_grooming';
+  $data{url} = join('/','http://img.int.janelia.org/simpson-image',
+                    @data{qw(family dir file)});
+  $data{url} =~ s/\.(?:tif|tiff)$/.jpg/;
+  $data{url} =~ s/\.avi$/.mp4/;
+  $return = { $item[0] => join('/',@data{qw(dir target_file)}),
+                          %data };
+} | <error>
+
+file: filebase '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{filebase} . '.' . $data{extension}, %data };
+} | <error: illegal image file>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+date: /\d{4}(?:0[1-9]|1[012])(?:0[1-9]|[12]\d|3[01])/ | <error: illegal date>
+filebase: /.+(?=\.(?:avi|tif|tiff|mp4|mov|txt))/ | <error: illegal filename>
+line: /[^\/]+/ | <error: illegal line>
+product: /[^\/]+/ | <error: illegal product>
+area: /[^\/]+/ | <error: illegal area>
+extension: /(avi|tif|tiff|mp4|mov|txt)$/ | <error: illegal extension>

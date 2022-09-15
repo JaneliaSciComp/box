@@ -1,0 +1,52 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  chacrm_tertiary.bash_tmpl
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-01-02
+# Description:    Create ChaCRM tertiary images
+# Required resources:
+#   Programs:     ImageJ
+# Parameters:     $1: ImageJ macro path
+# ****************************************************************************
+
+# Required resources
+IMAGEJ="/usr/local/java/jre/bin/java -mx8000m -XX:+AggressiveHeap -jar /usr/local/ImageJ/ij.jar -ijpath /usr/local/ImageJ -batch "
+
+# Parameters
+if [ ! $1 ]
+then
+  echo "Error: no ImageJ macro specified"
+  exit -1
+fi
+IMAGEJ_MACRO=$1
+
+# Make sure the ImageJ macro exists
+if [ ! -e $IMAGEJ_MACRO ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO does not exist"
+  exit -1
+fi
+
+# Set up X frame  buffer
+#/usr/bin/Xvfb :99 -screen 0 1x1x24 -sp /usr/lib64/xserver/SecurityPolicy -fp /usr/share/X11/fonts/misc &
+#MYPID=$!
+#export DISPLAY="localhost:99.0"
+
+# Run the ImageJ macro
+xvfb-run $IMAGEJ $IMAGEJ_MACRO
+if [ $? -ne 0 ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO failed"
+  exit -1
+fi
+
+# We're done with the frame buffer
+#kill -9 $MYPID
+
+# Link
+
+# We're done! Delete the ImageJ macro and this shell script.
+rm -f $IMAGEJ_MACRO
+trap "rm -f $0" 0
+echo "Job complete for $grammar{short_file}"

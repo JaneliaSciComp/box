@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+<!-- Grammar file -->
+<grammar>/misc/local/pipeline/grammar/zlatic.gra</grammar>
+
+<!-- Command files to create -->
+<command_file type="Grid script" in_name="/misc/local/pipeline/template/larval-choreography-combined.bash_tmpl" out_ext="bash" />
+
+
+<!-- Process flow -->
+
+<step>
+  <name>Exists</name>
+  <description>Check if sentinel file exists</description>
+  <action>file_exists</action>
+  <file>$grammar{dest_dir}/$grammar{sentinel_file}</file>
+  <pass>Found</pass>
+  <fail>Grid</fail>
+</step>
+<step>
+  <name>Found</name>
+  <description>Found</description>
+  <action>bump_counter</action>
+  <counter>Existing sentinel found, incrementing bump_counter</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Grid</name>
+  <description>Submit generated .bash script to grid</description>
+  <action>grid</action>
+  <qsub_args>-N C$grammar{datetime} -pe batch 6 -b y -cwd</qsub_args>
+  <!--qsub_args>-N C$grammar{datetime} -b y -cwd</qsub_args-->
+  <args>./$grammar{grid_script} "$grammar{source_dir}" "$grammar{dest_dir}" "$grammar{tracker}"</args>
+  <stdout>LOGS/$grammar{datetime}.stdout</stdout>
+  <stderr>LOGS/$grammar{datetime}.stderr</stderr>
+  <pass>Good_submit</pass>
+  <fail>Bad_submit</fail>
+</step>
+<step>
+  <name>Good_submit</name>
+  <description>Bump "submit" counter</description>
+  <action>bump_counter</action>
+  <counter>Submissions</counter>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Bad_submit</name>
+  <action>mail_stack</action>
+  <recipient>svirskasr@janelia.hhmi.org</recipient>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

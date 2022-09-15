@@ -1,0 +1,129 @@
+#!/usr/bin/perl
+
+use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5';
+use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5/lib64/perl5/5.8.5/x86_64-linux-thread-multi';
+use Zeiss::LSM;
+
+my $file = $ARGV[0]
+  || &terminateProgram('You must enter a filename');
+my $lsm;
+eval { $lsm = new Zeiss::LSM({stack => $file}); };
+&terminateProgram($@) if ($@);
+my $x = $lsm->cz_private->VoxelSizeX*1e6;
+my $y = $lsm->cz_private->VoxelSizeY*1e6;
+my $z = $lsm->cz_private->VoxelSizeZ*1e6;
+my %channel;
+$channel{$_->name} = $_->color foreach ($lsm->getChannels);
+my %channel_lookup;
+foreach my $key (keys %channel) { 
+    #print "$key\n";
+    my ($dcn,$tn) = split(/\-/,$key);
+    $channel_lookup{$dcn} = $key;
+}
+
+#print "\n";
+
+my %is_pattern_510;
+$is_pattern_510{'BP 505-530'} = 1;
+$is_pattern_510{'BP 505-550'} = 1;
+$is_pattern_510{'LP 505'} = 1;
+
+my %is_ref_510;
+$is_ref_510{'BP 575-615'} = 1;
+$is_ref_510{'LP 575'} = 1;
+$is_ref_510{'LP 650'} = 1; 
+
+@t = $lsm->getTracks;
+my ($patt_chan,$ref_chan,$red_chan,$green_chan,$blue_chan);
+my $is_710 = 0;
+foreach my $t ($lsm->getTracks) {
+  next if (lc($t->{TRACK_ENTRY_NAME}) =~ /bleach/); #may need to replace this  
+  #print "$t->{TRACK_ENTRY_NAME}\n";
+
+  foreach ($t->getDetectionchannels) {
+      $den = $_->{DETCHANNEL_DETECTION_CHANNEL_NAME};
+      $dfn = $_->{DETCHANNEL_FILTER_NAME};
+      $desws = $_->{DETCHANNEL_ENTRY_SPI_WAVELENGTH_START};
+      $deswe = $_->{DETCHANNEL_ENTRY_SPI_WAVELENGTH_END};
+
+      #print "\t$_->{DETCHANNEL_DETECTION_CHANNEL_NAME}\n";
+      #print "\t$_->{DETCHANNEL_FILTER_NAME}\n";
+      #print "\t$desws\n";
+      #print "\t$deswe\n";
+
+  }
+  $channel_name =  $channel_lookup{$den};
+  unless ($channel_name) {
+      print "Error: Channel name detection error!\n";
+      exit;
+  }
+  #print "\t$channel_name\n"; 
+  if ($dfn) {
+      #510 Image
+      #print "\tDFN: $dfn\n";
+      if ($is_pattern_510{$dfn}) {
+	  $patt_chan = $channel_name unless ($patt_chan);
+      } elsif ($is_ref_510{$dfn}) {
+	  $ref_chan = $channel_name unless ($ref_chan);
+      }      
+  } else {
+      #710 Image
+      if ($deswe > 600) {
+	  $ref_chan = $channel_name;
+      } elsif ( ($desws >= 485) && ($deswe <= 580)) {
+          $patt_chan = $channel_name;
+      }
+      #print "\tSTART: $desws\n";
+      #print "\tEND: $deswe\n";
+      $is_710 = 1;
+  }
+}
+
+#print "pattern: $patt_chan\n";
+#print "referen: $ref_chan\n";
+
+$channel_num = keys %channel;
+if ($channel_num == 3) {
+    foreach my $key (keys %channel) {    
+	if ( ($key ne $patt_chan) && ($key ne $ref_chan) ) {
+	    $blue_chan = $key;
+	}
+    }
+    #print "$ref_chan\t$patt_chan\t$blue_chan\t$is_710\n";
+} elsif ($channel_num < 3) {
+    #print "$ref_chan\t$patt_chan\t$ref_chan\t$is_710\n";
+}
+
+my($chan) = $ref_chan =~ /^(.+)-/;
+my @t = $lsm->getTracks;
+my $num = 0;
+my $chan_num = '';
+foreach my $t ($lsm->getTracks) {
+  foreach ($t->getDatachannels) {
+    if ($chan eq $_->DATACHANNEL_ENTRY_NAME) {
+      $chan_num = $num;
+      last;
+    }
+    $num++;
+  }
+  last if ($chan_num);
+}
+print "$chan_num $x $y $z\n";
+&terminateProgram();
+
+
+# ****************************************************************************
+# * Subroutine:  terminateProgram                                            *
+# * Description: This routine will gracefully terminate the program. If a    *
+# *              message is passed in, we exit with a code of -1. Otherwise, *
+# *              we exit with a code of 0.                                   *
+# *                                                                          *
+# * Parameters:  message: the error message to print                         *
+# * Returns:     NONE                                                        *
+# ****************************************************************************
+sub terminateProgram
+{
+  my $message = shift;
+  print STDERR  "$message\n" if ($message);
+  exit(($message) ? -1 : 0);
+}

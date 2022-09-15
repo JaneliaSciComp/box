@@ -1,0 +1,118 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  chacrm.bash_tmpl
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-01-02
+# Description:    After processing, this shell script template implements the
+#                 image processing flow for the Rubin Lab's ChaCRM images.
+#                 If needed, SecData and organizedData directory structures
+#                 are created. ImageJ is used to create work products, and
+#                 links from organizedData to SecData are created.
+# Required resources:
+#   Programs:     ImageJ
+#                 clustermakemov
+# Parameters:     $1: ImageJ macro path
+# ****************************************************************************
+
+# Required resources
+BFCONVERT="/usr/local/java/jre/bin/java -mx1024m -cp /usr/local/ImageJ/plugins/loci_tools.jar loci.formats.tools.ImageConverter"
+GMCONVERT='/misc/local/pipeline/bin/lsm2tiff';
+GMTAG='/misc/local/pipeline/bin/tiff_tagger';
+IMAGEJ="/usr/local/java/jre/bin/java -mx8000m -XX:+AggressiveHeap -jar /usr/local/ImageJ/ij.jar -ijpath /usr/local/ImageJ -batch "
+MAKEMOVIE="/misc/local/pipeline/bin/createmp4"
+
+# Parameters
+if [ ! $1 ]
+then
+  echo "Error: no ImageJ macro specified"
+  exit -1
+fi
+IMAGEJ_MACRO=$1
+IMAGEJ_MACRO2=$2
+
+# Make sure the .lsm file exists
+if [ -e $grammar{lsm_dir}/$grammar{lsm_file} ]
+then
+#  chmod 555 $grammar{lsm_dir}/$grammar{lsm_file}
+  echo "File exists"
+else
+  echo -e "Error: image $grammar{lsm_dir}/$grammar{lsm_file} does not exist"
+  exit -1
+fi
+
+# Make sure the ImageJ macro exists
+if [ ! -e $IMAGEJ_MACRO ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO does not exist"
+  exit -1
+fi
+
+# Add /usr/local/lib to library path for mplayer library
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+
+# Create work product directories as needed
+echo "Creating work product directories"
+for THISDIR in $grammar{secdata_dirs}
+do
+  if [ ! -e $THISDIR ]
+  then
+    mkdir -p -m 755 $THISDIR
+    if [ ! -e $THISDIR ]
+    then
+      echo -e "Could not create $THISDIR"
+      exit -1
+    fi
+  fi
+done
+
+# Set up X frame  buffer
+#/usr/bin/Xvfb :99 -screen 0 1x1x24 -sp /usr/lib64/xserver/SecurityPolicy -fp /usr/share/X11/fonts/misc &
+#MYPID=$!
+#export DISPLAY="localhost:99.0"
+
+# Run the ImageJ macro
+xvfb-run $IMAGEJ $IMAGEJ_MACRO2
+xvfb-run $IMAGEJ $IMAGEJ_MACRO
+
+if [ $? -ne 0 ]
+then
+  echo -e "Error: ImageJ macro $IMAGEJ_MACRO failed"
+  exit -1
+fi
+
+# We're done with the frame buffer
+#kill -9 $MYPID
+
+# Convert translation .avi to .mp4
+echo "Converting translation $grammar{translation_transient}"
+if [ -e $grammar{translation_dir}/$grammar{translation_transient} ]
+then
+  $MAKEMOVIE $grammar{translation_dir}/$grammar{translation_transient} $grammar{translation_dir}/$grammar{translation_file}
+  STATUS=$?
+else
+  echo "Error: no translation at $grammar{translation_dir}/$grammar{translation_transient}"
+  exit -1
+fi
+if [ $STATUS == 0 ]
+then
+  rm $grammar{translation_dir}/$grammar{translation_transient}
+  chmod 755 $grammar{translation_dir}/$grammar{translation_file}
+else
+  echo "Error $STATUS: no translation at $grammar{translation_dir}/$grammar{translation_file}"
+  exit -1
+fi
+
+# Remove transient files
+rm $grammar{tiff_dir}/$grammar{tiff_file}
+
+# Create Links removed
+
+
+# Projections
+
+# We're done! Delete the ImageJ macro and this shell script.
+rm -f $IMAGEJ_MACRO
+rm -f $IMAGEJ_MACRO2
+trap "rm -f $0" 0
+echo "Job complete for $grammar{short_file}"

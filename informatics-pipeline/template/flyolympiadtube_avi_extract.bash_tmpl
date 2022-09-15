@@ -1,0 +1,65 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flyolympiadtube_avi_extract.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    Script to split out individual tube avi's from master avi file
+# Required resources:
+#   Programs:     ffmpeg
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+
+cd "$grammar{avi_dir_path}"
+
+# check if tube avi files already exists, if so copy them to be converted and exit
+TUBECHECK=`ls *.avi | grep "$grammar{grep_tubes}" | wc -w`
+
+if [ $TUBECHECK = 6 ]
+then
+  echo "Found 6 existing tube avi files. Do not do anything";
+  cd ~/
+  trap "rm -f $0" 0
+  exit
+fi
+
+if [ $TUBECHECK > 6 ]
+then
+  if [ ! $TUBECHECK = 0 ]
+  then
+    echo "Found existing tube avi files for $grammar{clipname} but there are not exactly 6 in $grammar{avi_dir_path}" >> "$grammar{logfile}";
+    cd ~/
+    trap "rm -f $0" 0
+    exit;
+  fi
+fi
+
+
+# if not we need to create tube avi files
+# check for existing ROI file
+if [ -e "$grammar{avi_roi_path}" ]; then
+  echo "Found ROI";
+  /usr/local/python-2.7.3/bin/python /groups/flyprojects/home/olympiad/bin/extract_tube_avi/extract_tubes.py -r "$grammar{avi_roi_path}" "$grammar{avi_file_path}"
+else
+# if it does not exists use default ROI.txt
+  echo "Using Default ROI";
+  /usr/local/python-2.7.3/bin/python /groups/flyprojects/home/olympiad/bin/extract_tube_avi/extract_tubes.py -r "/groups/flyprojects/home/olympiad/bin/extract_tube_avi/ROI.txt" "$grammar{avi_file_path}"
+fi
+
+#check to see if 6 tube files are created
+TUBENUM=`ls $grammar{count_tubes} | wc -w`
+if [ ! $TUBENUM = 6 ]
+then
+  echo "Error did not generate 6 tube avi files: $grammar{avi_file_path}" >> "$grammar{logfile}";
+  cd ~/
+  trap "rm -f $0" 0
+  exit
+fi
+
+#clean up this script
+echo "Job complete for $grammar{avi_file_path}"
+cd ~/
+trap "rm -f $0" 0

@@ -1,0 +1,43 @@
+#!/bin/bash
+# ****************************************************************************
+# Resource name:  flybowlresultsmovie.bash_tmpl
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2011-02-07
+# Description:    Script to generate results avi for Fly Bowl experiments
+# Required resources:
+#   Programs:     
+#                 
+# Parameters:     $1: 
+# ****************************************************************************
+
+# Required resources
+#echo $grammar{checkfile}
+
+if [ ! -d "$grammar{extradiagnostics_dir_path}" ]
+then
+     mv "$grammar{computeperframestats_dir_path}" "$grammar{extradiagnostics_dir_path}"
+     echo "moving $grammar{computeperframestats_dir_path} to $grammar{extradiagnostics_dir_path}"
+fi
+
+source ~/.bashrc;
+
+export MCR_CACHE_ROOT=/scratch/olympiad/mcr_cache_root_olympiad.$JOB_ID;
+mkdir -p $MCR_CACHE_ROOT;
+
+#/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/current/run_FlyBowlExtraDiagnostics.sh /groups/branson/bransonlab/projects/olympiad/MCR/v716 $grammar{extradiagnostics_dir_path} analysis_protocol $grammar{analysis_protocol}
+#/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/20120706/run_FlyBowlExtraDiagnostics.sh /groups/branson/bransonlab/projects/olympiad/MCR/v717 $grammar{extradiagnostics_dir_path} analysis_protocol 20120706
+
+/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/settings/current/run_FlyBowlExtraDiagnostics.sh /groups/branson/bransonlab/projects/olympiad/MCR/v717 $grammar{extradiagnostics_dir_path} analysis_protocol $grammar{analysis_protocol}
+
+/groups/flyprojects/home/olympiad/bowl_bin/flybowl_inline_dataloader.pl $grammar{extradiagnostics_dir_path} temperature_diagnostics.txt
+/groups/flyprojects/home/olympiad/bowl_bin/flybowl_inline_dataloader.pl $grammar{extradiagnostics_dir_path} bkgd_diagnostics.txt
+/groups/flyprojects/home/olympiad/bowl_bin/flybowl_inline_dataloader.pl $grammar{extradiagnostics_dir_path} bias_diagnostics.txt
+/groups/flyprojects/home/olympiad/bowl_bin/flybowl_inline_dataloader.pl $grammar{extradiagnostics_dir_path} video_diagnostics.txt
+
+/groups/branson/bransonlab/projects/olympiad/FlyBowlAnalysis/analysis_protocol.pl $grammar{extradiagnostics_dir_path}
+/groups/flyprojects/home/olympiad/bowl_bin/flybowl_load_analysis_protocol.pl $grammar{extradiagnostics_dir_path} analysis_protocol.txt
+
+rm -rf $MCR_CACHE_ROOT;
+cd /groups/flyprojects/home/olympiad/bowl_pipeline/
+trap "rm -f $0" 0

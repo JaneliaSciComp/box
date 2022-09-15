@@ -1,0 +1,50 @@
+// ***************************************************************************
+// Resource name:  baker_biorad.imj_tmpl
+// Written by:     Rob Svirskas
+// Revision level: 1.2
+// Date released:  2008-09-09
+// Description:    After processing, this ImageJ macro template template
+//                 converts coupled BioRad files into a single TIFF stack.
+// Parameters:     NONE
+// ***************************************************************************
+
+// $grammar{file}
+requires("1.38x");
+
+print("Sequence start for $grammar{file}");
+saveSettings();
+loadStack();
+mergeImages();
+terminateMacro();
+
+function loadStack() {
+  print("Opening paired images $grammar{file} and $grammar{file_two}");
+  print("Opening $grammar{path}");
+  open("$grammar{path}");
+  print("Opening $grammar{path_two}");
+  open("$grammar{path_two}");
+  print("Images opened");
+}
+
+function mergeImages() {
+  print("Merging " + nImages() + " images");
+  if ((nImages() == 2))  {
+    run("RGB Merge...","red=$grammar{file} green=$grammar{file_two} blue=*None*");
+    saveAs("Tiff","$grammar{tiff_dir}/$grammar{tiff_file}");
+  }
+  else {
+    print("Title: "+getTitle());
+    exit("Image must be 2- or 3-channel (found " + nImages() + ")");
+  }
+  print("Image merge complete");
+}
+
+function terminateMacro() {
+  while (nImages()>0) {
+    selectImage(nImages());
+    run("Close");
+  }
+  print("Sequence stop");
+  run("Quit","");
+  exit();
+}

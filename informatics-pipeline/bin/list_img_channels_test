@@ -1,0 +1,22 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use DBI;
+use JFRC::DB::SAGE::Line;
+
+my $dbh;
+
+my $imagename = $ARGV[0];
+&initializeProgram();
+
+my $ar = $dbh->selectrow_arrayref("SELECT id,family,data_set FROM image_data_mv WHERE name='$image_name'");
+
+exit(0);
+
+
+sub initializeProgram
+{
+  my $db = JFRC::DB::SAGE::DB->new();
+  $dbh = $db->dbh;
+}

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Send a lab's Q score files to STDOUT. This script takes a single parameter:
+# the lab name in lowercase.
+
+case $1 in
+rubin)
+ls /groups/rubin/data0/rubinlab/SecData/registrations >/dev/null
+find /groups/rubin/data0/rubinlab/SecData/registrations/* -name "*loop2.tif_matching_quality.csv" -mtime -300
+;;
+esac

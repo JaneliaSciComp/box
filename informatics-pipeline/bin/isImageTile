@@ -1,0 +1,56 @@
+#!/usr/bin/perl
+
+use strict;
+use DBI;
+my $dsn = "dbi:mysql:dbname=nighthawk;host=mysql2;port=3306";
+my $username = "nighthawkRead";
+my $password = "nighthawkRead";
+
+my $dbh = DBI->connect( $dsn, $username, $password )
+    or die("unable to open db handle");
+
+my $image_name = $ARGV[0];
+
+my $sql = qq~
+select p.value 
+from image i, image_property p
+where i.name like "%$image_name%" 
+and i.id = p.image_id 
+and p.type = "tile"
+    ~;
+
+my @data = do_sql($dbh,$sql);
+
+if ($data[0]) {
+    print "1\n";
+} else {
+    print "0\n";
+}
+
+$dbh->disconnect();
+exit;
+
+sub do_sql {
+    my($dbh,$query,$delimeter) = @_;
+    my($statementHandle,@x,@results);
+    my(@row);
+
+    if($delimeter eq "") {
+        $delimeter = "\t"; # define a delimiter between each element in a row.
+    }
+
+    $statementHandle = $dbh->prepare($query); # prepare query
+    if ( !defined $statementHandle) {
+        print "Cannot prepare statement: $DBI::errstr\n"; # error in db connection
+    }
+
+    $statementHandle->execute() || print "failed query: $query\n"; #execute query
+
+    while ( @row = $statementHandle->fetchrow() ) { # while query runs, @row is assigned
+        push(@results,join($delimeter,@row)); # join contents of row with delimiter
+    }
+
+    #release the statement handle resources
+    $statementHandle->finish;
+    return(@results); #query results
+}

@@ -1,0 +1,258 @@
+// ***************************************************************************
+// Resource name:  simpson.imj_tmpl
+// Written by:     Rob Svirskas
+// Revision level: 1.2
+// Date released:  2008-09-09
+// Description:    After processing, this ImageJ macro template template
+//                 implements the image processing flow for the Simpson Lab's
+//                 GAL4 images. ImageJ is used to create stack projections,
+//                 a Z stack translation, and a 360 degree single-axis
+//                 rotation.
+// Parameters:     NONE
+// ***************************************************************************
+
+// $grammar{lsm_file}
+requires("1.38x");
+
+var method="[Maximum Intensity]";
+var rmethod="[Brightest Point]";
+var base='$grammar{lsm_file} Channel : ';
+var Detect= newArray('Ch4-T2','Ch2-T2','Ch1-T2','Ch2','C=1','Ch4-T2','Ch1-T3',
+                     'Ch4-T3','Ch2-T3','Ch3-T2','ChS1-T2');
+var Red   = newArray('Ch4-T2','Ch1-T1','Ch1-T2','Ch1','C=0','Ch4-T2','Ch3-T2',
+                     'Ch3-T1','Ch3-T2','Ch3-T2','ChS1-T2');
+var Green = newArray('Ch3-T1','Ch2-T2','Ch2-T1','Ch2','C=1','Ch3-T1','Ch2-T1',
+                     'Ch2-T2','Ch2-T1','Ch3-T1','Ch1-T1');
+var Blue  = newArray('Ch4-T2','Ch1-T1','Ch1-T2','Ch1','C=0','Ch2-T3','Ch1-T3',
+                     'Ch2-T2','Ch2-T3','Ch2-T1','ChS1-T2');
+var single = 0;
+
+print("Sequence start for $grammar{lsm_file}");
+saveSettings();
+loadStack();
+mergeImages();
+if (nSlices > 1) {
+  createTranslation();
+  if ($grammar{medial} == 1) {
+    createMedial();
+    selectWindow("$grammar{short_file}");
+  }
+//  createRotation();
+}
+createProjections();
+terminateMacro();
+
+function loadStack() {
+  print("Opening $grammar{lsm_dir}/$grammar{lsm_file} with LSM Reader");
+  run("LSM Reader","open=$grammar{lsm_dir}/$grammar{lsm_file}");
+  if (nImages() == 0) {
+    print("Opening $grammar{lsm_dir}/$grammar{lsm_file} with "
+          + "Bio-Formats Importer");
+    run("Bio-Formats Importer","open=$grammar{lsm_dir}/$grammar{lsm_file} "
+        + "view=[Standard ImageJ] stack=Default split_channels");
+    // The base changes for files opened with the Bio-Formats Importer!
+    base='$grammar{lsm_file} - ';
+    if (nImages() == 0) {
+      exit("Could not open with Bio-Formats Importer");
+    }
+  }
+  print("Image opened");
+}
+
+function mergeImages() {
+  print("Merging " + nImages() + " images");
+  if ((nImages() == 2) || (nImages() == 3))  {
+    Found=0;
+    for (i=0; i<Detect.length; i++) {
+      DETECT = base + Detect[i];
+      // ***************
+      // Swap channels
+      if (i == 1) {
+        swap = Red[i];
+        Red[i] = Green[i];
+        Green[i] = swap;
+        Blue[i] = Red[i];
+      }
+      // ***************
+      RED = base + Red[i];
+      GREEN = base + Green[i];
+      BLUE = base + Blue[i];
+      if (getTitle() == DETECT) {
+        print("Image " + getTitle() + " detected as " + Detect[i]);
+        if (bitDepth() == 16) {
+          print("Converting " + Red[i] + " (red) from 12-bit to 8-bit");
+          convert12bit(RED);
+          print("Converting " + Green[i] + " (green) from 12-bit to 8-bit");
+          convert12bit(GREEN);
+          if ((nImages() == 3) && (bitDepth() == 16)) {
+            print("Converting " + Blue[i] + " (blue) from 12-bit to 8-bit");
+            convert12bit(BLUE);
+          }
+        }
+        run("RGB Merge...","red=[" + RED + "] " + "green=[" + GREEN
+            + "] blue=[" + BLUE + "]");
+        Found=1;
+      }
+    }
+    if (Found == 0) {
+      exit("Could not match title " + getTitle());
+    }
+  }
+  else {
+    if (nImages() != 1) {
+      print("Title: "+getTitle());
+      exit("Image must be 2- or 3-channel (found " + nImages() + ")");
+    }
+    GREEN = getTitle();
+    if (bitDepth() == 16) {
+      print("Converting " + Green[i] + " (green) from 12-bit to 8-bit");
+      convert12bit(GREEN);
+    }
+    run("RGB Merge...","red=*None* " + "green=[" + GREEN
+        + "] blue=*None*");
+    single = 1;
+  }
+  rename("$grammar{short_file}");
+  print("Image merge complete");
+}
+
+function convert12bit(image) {
+// Uncomment the following lines to fix non-ramped
+// images with lots of red pixels...
+//  method="[Average Intensity]";
+//  rmethod="[Mean Value]";
+  selectWindow(image);
+// Straight set
+  setMinAndMax(0,4095);
+  run("8-bit");
+}
+
+function createProjections() {
+  print("Generating projections");
+  // Reference+pattern total projection
+  print("  Creating total projection (reference+pattern)");
+  zProject();
+  saveAs("Jpeg","$grammar{projection_dir}/$grammar{short_file}" + "_00.jpg");
+  close();
+  print("  Total projection complete");
+
+  // Reference+pattern substacks
+  print("  Creating substack projections (reference+pattern)");
+  subStack=15;
+  orgNum=nSlices;
+  slNum=nSlices;
+  while (slNum>=subStack) {
+    slNum=slNum-subStack;
+  }
+  addNum=subStack-slNum;
+  if (slNum>0) {
+    for (t=1; t<=addNum; t++)  {
+      setSlice(nSlices);
+      run("Add Slice");
+      run("Subtract...", "slice value=255");
+    }
+  }
+  run("Grouped ZProjector", "group="+subStack+" projection=[Max Intensity]");
+  filepath = "$grammar{projection_dir}/$grammar{short_file}" + "_01.jpg";
+  run("Image Sequence... ", "format=Jpeg name=[$grammar{short_file}"
+      + "_] start=1 digits=2 save=[" + filepath + "]");
+  close();
+  print("  Substack projections complete");
+
+  if (single == 1) {
+    return;
+  }
+
+  // Single channel projections
+  print("  Splitting RGB");
+  run("RGB Split");
+  selectWindow("$grammar{short_file} (red)");
+  close();
+  selectWindow("$grammar{short_file} (blue)");
+  close();
+  print("  Split complete");
+
+  // Clear memory
+  clearMemory();
+
+  // Pattern total projection
+  print("  Creating total projection (pattern only)");
+  run("RGB Merge...","red=*None* green=[$grammar{short_file} (green)] "
+      + "blue=*None*");
+  zProject();
+  saveAs("Jpeg", "$grammar{projection_dir}/$grammar{short_file}"
+         + "_ch2_00.jpg");
+  close();
+  print("  Total projection complete");
+
+  // Pattern substacks
+  print("  Creating substack projections (pattern only)");
+  run("Grouped ZProjector","group=" + subStack + " projection=[Max Intensity]");
+  filepath = "$grammar{projection_dir}/$grammar{short_file}" + "_ch2_01.jpg";
+  run("Image Sequence... ", "format=Jpeg name=[$grammar{short_file}"
+      + "_ch2_] start=1 digits=2 save=[" + filepath + "]");
+  close();
+  print("  Substack projections complete");
+  print("Projections generated");
+}
+
+function zProject() {
+  if (nSlices == 1) {
+    return;
+  }
+  run("RGB Zprojector","red=" + method + " green=" + method
+      + " blue=" + method + " power=2");
+  if (method == "[Average Intensity]") {
+    run("Sharpen");
+    run("Enhance Contrast", "saturated=0.5");
+  }
+}
+
+function createTranslation() {
+  print("Generating translation");
+  saveAs("avi","$grammar{translation_dir}/$grammar{translation_transient}");
+  clearMemory();
+  print("Translation generated");
+}
+
+function createMedial() {
+  print("Generating medial translation");
+  run("Reslice [/]...","input=1.000 output=1.000 start=Top");
+  saveAs("avi","$grammar{medial_dir}/$grammar{medial_transient}");
+  clearMemory();
+  run("Close");
+  print("Medial translation generated");
+}
+
+function createRotation() {
+  print("Generating rotation");
+  run("3D Project...","projection=" + rmethod + " axis=Y-Axis slice=1 "
+      + "initial=0 total=360 rotation=10 lower=1 upper=255 opacity=0 "
+      + "surface=100 interior=1 interpolate");
+  if (method == "[Average Intensity]") {
+    run("Enhance Contrast", "saturated=0.5 normalize_all");
+  }
+  saveAs("avi","$grammar{rotation_dir}/$grammar{rotation_transient}");
+  close();
+  clearMemory();
+  print("Rotation generated");
+}
+
+function clearMemory() {
+  d=call("ij.IJ.maxMemory");
+  e=call("ij.IJ.currentMemory");
+  for (trials=0; trials<3; trials++) {
+    call("java.lang.System.gc");
+    wait(100);
+  }
+}
+
+function terminateMacro() {
+  while (nImages()>0) {
+    selectImage(nImages());
+    run("Close");
+  }
+  print("Sequence stop");
+  run("Quit","");
+  exit();
+}

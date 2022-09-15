@@ -1,0 +1,64 @@
+# ****************************************************************************
+# Resource name:  simpson_workstation.gra      
+# Written by:     Eric Trautman
+# Revision level: 1.0
+# Date released:  2014-03-13
+# Description:    This grammar will parse simpson_descending family images
+#                 living somewhere under /groups/simpson/MicroscopeData.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Some aliases to match other labs
+  my @namedata = split(/\_/, $data{lsmname});
+
+  # Base directories
+  my $BASE = '/groups/simpson/MicroscopeData';
+  $data{img_application} = 'simpson-image';
+  $data{designator} = 'simpson_descending';
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $BASE;
+  $data{lsm_file} = $data{source_file} = $data{file};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  # need to add extra parent directory to sage_image value for getImage to work - not sure why
+  $data{sage_image} = "MicroscopeData/" . join('/',@data{qw(source_file)});
+  $data{short_file} = $no_ext;
+
+  # Line Name
+  my $line_name = "";
+  my $get_line_name_cmd = '/misc/local/pipeline/bin/get_sage_line_name ' . $data{lsm_file};
+  open (CMD3, "$get_line_name_cmd |");
+  while (my $output = <CMD3>) {
+       chomp($output);
+       if ($output) {
+               $line_name = $output;
+       }
+  }
+  close (CMD3);
+  $data{line} = $line_name;
+
+  $return = { $item[0] => join('/',$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+
+stack: lsmname
+{
+   $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+lsmname: /[^\.]+/ | <error: illegal clipname>
+extension: 'lsm' | <error: illegal extension>

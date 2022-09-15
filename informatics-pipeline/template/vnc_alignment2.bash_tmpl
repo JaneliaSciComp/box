@@ -1,0 +1,165 @@
+#!/bin/bash
+
+# Program locations:
+JBA='/groups/sciserv/flyolympiad/vnc_align/toolkit/JBA/brainaligner'
+CMTKDIR='/usr/local/cmtk/bin/'
+FIJI='/groups/sciserv/flyolympiad/vnc_align/scripts/Fiji.app/ImageJ-linux64'
+RAWCONV='/groups/sciserv/flyolympiad/vnc_align/scripts/raw2nrrd.ijm'
+NRRDCONV='/groups/sciserv/flyolympiad/vnc_align/scripts/nrrd2raw.ijm'
+ZPROJECT='/misc/local/pipeline/fiji/z_project.ijm'
+PYTHON='/usr/local/python-2.7.3/bin/python'
+QUAL='/groups/sciserv/flyolympiad/vnc_align/scripts/Quality.py'
+# Templates
+Tfile='/groups/sciserv/flyolympiad/vnc_align/newtarget/flyVNCtemplate20xDaS.nrrd'
+TfileR='/groups/sciserv/flyolympiad/vnc_align/newtarget/flyVNCtemplate20xDaS.raw'
+
+echo "Job started at " `date`
+SAGE_IMAGE="$grammar{sage_image}"
+USERID="$grammar{userid}"
+echo "$grammar{sage_image}"
+
+# Make sure the .lsm file exists
+if [ -e $grammar{lsm_dir}/$grammar{lsm_file} ]
+then
+   echo "LSM file exists"
+else
+  echo -e "Error: image $grammar{lsm_dir}/$grammar{lsm_file} does not exist"
+  exit -1
+fi
+# Make sure that registration directory exists
+if [ ! -e $grammar{registration_dir} ]
+  then
+    mkdir -p -m 755 $grammar{registration_dir}
+fi
+cd $grammar{registration_dir}
+
+# ---------------------------------------------------------------------------------------------
+
+# JBA rigid alignment
+echo "+----------------------------------------------------------------------+"
+echo "| Running JBA rigid alignment                                          |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+# $JBA -t $TfileR -s $grammar{lsm_dir}/$grammar{lsm_file} -o $grammar{registered_rigid_raw} -X 0.4612588 -Z 0.46 -w 0 -C 0 -c 1 -B 1024 -Y
+$JBA -t $TfileR -s $grammar{lsm_dir}/$grammar{lsm_file} -o $grammar{registered_rigid_raw} -w 0 -C 0 -c 1 -B 1024 -Y
+STOP=`date '+%F %T'`
+if [ ! -e $grammar{registered_rigid_raw} ]
+then
+  echo -e "Error: JBA rigid alignment failed"
+  exit -1
+fi
+/misc/local/pipeline/bin/add_operation -operation jba_rigid_alignment -name "$SAGE_IMAGE" -start "$START" -stop "$STOP" -operator $USERID -program "$JBA" -version '1.000' -parm alignment_target="$TfileR"
+
+# NRRD conversion
+echo "+----------------------------------------------------------------------+"
+echo "| Running raw -> NRRD conversion                                       |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+xvfb-run $FIJI -macro $RAWCONV $grammar{registered_rigid_raw} -batch
+STOP=`date '+%F %T'`
+if [ ! -e $grammar{registered_rigid_c2_nrrd} ]
+then
+  echo -e "Error: raw -> NRRD conversion failed"
+  exit -1
+fi
+/misc/local/pipeline/bin/add_operation -operation raw_nrrd_conversion -name "$SAGE_IMAGE" -start "$START" -stop "$STOP" -operator $USERID -program "$FIJI" -version '1.47q' -parm imagej_macro="$RAWCONV"
+
+# CMTK registration
+echo "+----------------------------------------------------------------------+"
+echo "| Running CMTK registration                                            |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+$CMTKDIR/registration --dofs 6,9 --auto-multi-levels 4 -o $grammar{registered_rigid_affine_xform} $Tfile $grammar{registered_rigid_c2_nrrd}
+STOP=`date '+%F %T'`
+if [ ! -e $grammar{registered_rigid_affine_xform} ]
+then
+  echo -e "Error: CMTK registration failed"
+  exit -1
+fi
+/misc/local/pipeline/bin/add_operation -operation cmtk_registration -name "$SAGE_IMAGE" -start "$START" -stop "$STOP" - operator $USERID -program "$CMTKDIR/registration" -version '2.2.6' -parm alignment_target="$Tfile"
+
+# CMTK warping
+echo "+----------------------------------------------------------------------+"
+echo "| Running CMTK warping                                                 |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+$CMTKDIR/warp -o $grammar{registered_rigid_warp_xform} --grid-spacing 80 --exploration 30 --coarsest 4 --accuracy 0.2 --refine 4 --energy-weight 1e-1 --initial $grammar{registered_rigid_affine_xform} $Tfile $grammar{registered_rigid_c2_nrrd}
+STOP=`date '+%F %T'`
+if [ ! -e $grammar{registered_rigid_warp_xform} ]
+then
+  echo -e "Error: CMTK warping failed"
+  exit -1
+fi
+/misc/local/pipeline/bin/add_operation -operation cmtk_warping -name "$SAGE_IMAGE" -start "$START" -stop "$STOP" -operator $USERID -program "$CMTKDIR/warp" -version '2.2.6' -parm alignment_target="$Tfile"
+
+# CMTK reformatting
+echo "+----------------------------------------------------------------------+"
+echo "| Running CMTK reformatting                                            |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+$CMTKDIR/reformatx -o $grammar{registered_rigid_bgwarp_nrrd} --floating $grammar{registered_rigid_c2_nrrd} $Tfile $grammar{registered_rigid_warp_xform}
+STOP=`date '+%F %T'`
+if [ ! -e $grammar{registered_rigid_bgwarp_nrrd} ]
+then
+  echo -e "Error: CMTK reformatting failed"
+  exit -1
+fi
+/misc/local/pipeline/bin/add_operation -operation cmtk_reformatting -name "$SAGE_IMAGE" -start "$START" -stop "$STOP" -operator $USERID -program "$CMTKDIR/reformatx" -version '2.2.6' -parm alignment_target="$Tfile"
+
+# QC
+echo "+----------------------------------------------------------------------+"
+echo "| Running QC                                                           |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+$PYTHON $QUAL $grammar{registered_rigid_bgwarp_nrrd} $Tfile $grammar{registered_rigid_warp_qual}
+STOP=`date '+%F %T'`
+if [ ! -e $grammar{registered_rigid_warp_qual} ]
+then
+  echo -e "Error: quality check failed"
+  exit -1
+fi
+/misc/local/pipeline/bin/add_operation -operation alignment_qc -name "$SAGE_IMAGE" -start "$START" -stop "$STOP" -operator $USERID -program "$QUAL" -version '1.0' -parm alignment_target="$Tfile"
+
+# CMTK reformatting
+echo "+----------------------------------------------------------------------+"
+echo "| Running CMTK reformatting                                            |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+$CMTKDIR/reformatx -o $grammar{registered_rigid_sgwarp_nrrd} --floating $grammar{registered_rigid_c1_nrrd} $Tfile $grammar{registered_rigid_warp_xform}
+STOP=`date '+%F %T'`
+if [ ! -e $grammar{registered_rigid_sgwarp_nrrd} ]
+then
+  echo -e "Error: CMTK reformatting failed"
+  exit -1
+fi
+/misc/local/pipeline/bin/add_operation -operation cmtk_reformatting -name "$SAGE_IMAGE" -start "$START" -stop "$STOP" -operator $USERID -program "$CMTKDIR/reformatx" -version '2.2.6' -parm alignment_target="$Tfile"
+
+# NRRD conversion
+echo "+----------------------------------------------------------------------+"
+echo "| Running NRRD -> raw conversion                                       |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+xvfb-run $FIJI -macro $NRRDCONV $grammar{registered_rigid_warp_raw} -batch
+STOP=`date '+%F %T'`
+if [ ! -e $grammar{registered_rigid_warp_raw} ]
+then
+  echo -e "Error: NRRD -> raw conversion failed"
+  exit -1
+fi
+/misc/local/pipeline/bin/add_operation -operation nrrd_raw_conversion -name "$SAGE_IMAGE" -start "$START" -stop "$STOP" -operator $USERID -program "$FIJI" -version '1.47q' -parm imagej_macro="$NRRDCONV"
+
+# Z projection
+echo "+----------------------------------------------------------------------+"
+echo "| Running Z projection                                                 |"
+echo "+----------------------------------------------------------------------+"
+START=`date '+%F %T'`
+xvfb-run $FIJI -macro $ZPROJECT $grammar{registered_rigid_warp_raw} -batch
+STOP=`date '+%F %T'`
+
+# Cleanup
+/bin/rm -rf *-rigid-*.xform *.nrrd *-rigid.raw
+
+echo "Job completed at " `date`
+
+cd /groups/sciserv/flyolympiad/vnc_align/pipeline/
+trap "rm -f $0" 0

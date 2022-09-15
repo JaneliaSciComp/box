@@ -1,0 +1,89 @@
+# ****************************************************************************
+# Resource name:  flyolympiadctrax.gra      
+# Written by:     Lowell Umayam
+# Revision level: 1.0
+# Date released:  2009-04-07
+# Description:    This grammar will parse the qualified sbfmf video files
+#                 for the Fly Olympiad and allow the generation of ctrax data.
+#                 
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+
+start: pathname
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Base directories
+  $data{base_dir} = '/groups/sciserv/flyolympiad/Olympiad_Screen/box/01_sbfmf_compressed';  
+  $data{tracked_path} = '/groups/sciserv/flyolympiad/Olympiad_Screen/box/02_fotracked';
+
+  $data{mat_filename} = $data{clipname} . '.mat';
+  
+  $data{annot_filename} = $data{filename} . '.ann';
+  
+  $data{sbfmf_dir_path} = $data{base_dir} . '/' . $data{topdir} . '/' . $data{expdir} . '/' . $data{tubedir};
+  
+  $data{sbfmf_file_path} = $data{sbfmf_dir_path} . '/' . $data{filename};
+  $data{check_file_path} = $data{sbfmf_dir_path} . '/' . $data{mat_filename};  
+    
+  $data{tracked_topdir_path} = $data{tracked_path} . '/' . $data{topdir};
+  
+  $data{tracked_expdir_path} = $data{tracked_topdir_path} . '/' . $data{expdir};
+  
+  $data{tracked_anndir_path} = $data{tracked_expdir_path} . '/' . $data{tubedir};
+
+  $data{sbfmf_annot_path} = $data{tracked_anndir_path} . '/' .  $data{filename};
+  
+  $data{tracked_output} = $data{tracked_topdir_path} . '/Output';    
+  $data{tracked_output_expdir} = $data{tracked_output} . '/' . $data{expdir};
+  $data{tracked_output_expdir_seqtube} =  $data{tracked_output_expdir} . '/' . $data{clipname};
+
+  $data{sbfmf_check_path} = $data{base_dir} . '/' . $data{topdir} . '/Output/' . $data{expdir} . '/' .  $data{clipname};
+
+
+  $data{tracked_annot_path} = $data{ftracked_path} . '/' .  $data{annot_filename};
+  $data{mat_annot_path} =  $data{ftracked_path} . '/' .  $data{mat_filename};  
+
+  $data{unique_id} = "fotrack-" . $data{topdir} . "-" . $data{expdir} . "-" . $data{clipname};
+  $data{unique_id} =~ s/\;/\_/g;  
+  $data{unique_id} =~ s/\s+/\_/g;
+  $data{unique_id} =~ s/\(/\_/g;
+  $data{unique_id} =~ s/\)/\_/g;
+
+  $data{stdout_path} = '/groups/flyprojects/home/olympiad/LOGS/' . $data{unique_id} . '.stdout';
+  $data{stderr_path} = '/groups/flyprojects/home/olympiad/LOGS/' . $data{unique_id} . '.stderr';
+  
+  $return = { $item[0] => $data{pathname}, %data };
+}
+
+pathname: sourcedir '/' filename
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',$data{sourcedir},$data{filename}), %data };
+}
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+filename: clipname '' extension
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+sourcedir: topdir '/' expdir '/' tubedir
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+topdir: /[^\/]+/ | <error: illegal top level directory>
+expdir: /\d+\_\d+\.\d+\_\d+/ | <error: illegal experiment dir>
+tubedir: /\d+\_\d+\.\d+\_tube\d+\_sbfmf/ | <error: what>
+clipname: /\d+\_\d+\.\d+\_seq\d+\_tube\d+/ | <error: illegal clipname here>
+extension: '.sbfmf' | <error: illegal extension>

@@ -1,0 +1,87 @@
+# ****************************************************************************
+# Resource name:  dickson_vienna.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.1
+# Date released:  2016-11-15
+# Description:    This grammar will parse the qualified stack names
+#                 (effector/file) for Dickson Vienna images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: effector '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Some aliases to match other labs
+  my @namedata = split(/\_/, $data{lsmname});
+  $data{transformantid} = $data{lsmname};
+
+  # Base directories
+  my $BASE = '/groups/flylight/flylight/VT_Image_Data/VT_LSMs';
+  $data{img_application} = 'flylight-image';
+  $data{family} = $data{designator} = 'dickson_vienna';
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $BASE . '/' . $data{effector};
+  $data{lsm_file} = $data{source_file} = $data{file};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{sage_image} = join('/',@data{qw(effector source_file)});
+  $data{short_file} = $no_ext;
+  # Line Name
+  # Use $data{vt_line} $data{effector}
+  $data{vt_line} = (split('_', $data{short_file}))[0];
+  open(CONVERT,'/groups/scicomp/informatics/data/vt_bjd_conversion_specific.txt');
+  while (<CONVERT>) {
+    my($vt,$eff,$bjd) = split(/\s+/);
+    if (($vt eq $data{vt_line}) && ($eff eq $data{effector})) {
+      $data{line} = $bjd;
+      last;
+    }
+  }
+  close(CONVERT);
+  $data{line} = 'BJD_K_66878' if ($data{vt_line} eq 'VT010566');
+  unless ($data{line}) {
+    print STDERR "Failed RD parsing: could not find line for [$data{vt_line}] [$data{effector}]\n";
+    return(0);
+  }
+
+  # Stuff to set
+  $data{age} = "A00";
+  $data{area} = $data{tile} = "brain";
+  $data{organ} = "b";
+  $data{channel_spec} = 'sr';
+  $data{class} = 'Screening';
+  $data{data_set} = 'dicksonlab_vienna_';
+  $data{data_set} .= ($data{effector} =~ /lex/i) ? 'lexa' : 'gal4';
+  $data{driver} .= ($data{effector} =~ /lex/i) ? 'LexA' : 'GAL4_Collection';
+  $data{date} = '2013-10-01';
+  $data{gender} = 'm';
+  $data{imaging_project} = 'broad_expression_patterns';
+  $data{renamed_by} = 'Rob Svirskas';
+  $data{slide_code} = 'imp_' . $data{vt_line};
+  $data{tissue_orientation} = 'face_up';
+  $data{vt_id_found} = 'Y';
+  $data{vt_library_match} = 'Y';
+
+  $return = { $item[0] => join('/',$data{effector},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+
+stack: lsmname
+{
+   $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+effector: /[^\/]+/ | <error: illegal effector>
+lsmname: /[^\.]+/ | <error: illegal LSM file>
+extension: 'lsm' | <error: illegal extension>

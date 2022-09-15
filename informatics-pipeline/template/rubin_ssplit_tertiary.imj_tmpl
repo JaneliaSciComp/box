@@ -1,0 +1,65 @@
+// $grammar{registered_local_tiff}
+requires("1.38x");
+
+// define method of projection. Can be "Average Intensity", "Maximum Intensity", "Sum Slices" or "Standard Deviation".
+//print("Defining method...");
+//var method="[Maximum Intensity]";
+
+// suppress rendering of images (faster).
+print("suppress image rendering");
+setBatchMode(true);
+// open v3draw image
+print("opening $grammar{registration_dir}/$grammar{short_file}.loop2.raw");
+run("raw reader", "open=$grammar{registration_dir}/$grammar{short_file}.loop2.raw");
+print("finished reading in raw image...");
+// get image ID
+IID=getImageID();
+
+//run("Channels Tool... ");
+//Stack.setActiveChannels("1100");
+//run("Close");
+
+print("change colors...");
+CHANGE_COLORS(IID);
+
+print("z project..");
+run("Z Project...", "start=1 stop=218 projection=[Max Intensity]");
+
+// enhance contrast and intensity of result.
+//run("Enhance Contrast", "saturated=0.25");
+
+print("Saving PNG...");
+// save result of projection as JPG to output directory defined in grammar.
+saveAs("PNG", "$grammar{projection_dir}/$grammar{projection_local_registered}");
+
+// close all images
+run("Close All");
+
+// leave batch mode
+setBatchMode(false);
+
+// quit imagej/fiji
+run("Quit","");
+exit();
+
+function CHANGE_COLORS(IID) {
+  Stack.setActiveChannels("1100");
+  Stack.getDimensions(width, height, channels, slices, frames);
+  bd=bitDepth();
+  newImage("black", bd+" Black", width, height, 1);
+  BID=getImageID();
+  run("Copy");
+  selectImage(IID);
+  for(i=1; i<=slices;i++){
+    Stack.setPosition(3, i, 1);
+    run("Paste");
+  }
+  selectImage(BID);
+  close();
+  Stack.setPosition(1, slices/2, 1);
+  run("$grammar{channel_one_color}");
+  resetMinAndMax();
+  Stack.setPosition(2, slices/2, 1);
+  run("$grammar{channel_two_color}");
+  resetMinAndMax();
+}

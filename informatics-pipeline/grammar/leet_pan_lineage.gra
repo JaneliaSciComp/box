@@ -1,0 +1,71 @@
+# ****************************************************************************
+# Resource name:  leetpanlineage.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2012-10-16
+# Description:    This grammar will parse the qualified stack names
+#                 (date/file) for Lee Lab Pan Lineage images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Some aliases to match other labs
+
+  my @namedata = split(/\_/, $data{lsmname});
+
+  
+  
+
+  $data{transformantid} = $data{lsmname};
+
+  # Base directories
+  my $BASE = '/groups/leet/leetimg/leetlab/lineage/leet_pan_lineage';
+  $data{designator} = 'leet_pan_lineage';
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $BASE . '/confocalStacks';
+  $data{lsm_file} = $data{source_file} = $data{file};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{sage_image} = join('/',@data{qw(source_file)});
+  $data{short_file} = $no_ext;
+
+  # Line Name
+  my $line_name = "";
+  my $get_line_name_cmd = '/misc/local/pipeline/bin/get_sage_line_name ' . $data{lsm_file};
+  open (CMD3, "$get_line_name_cmd |");
+  while (my $output = <CMD3>) {
+       chomp($output);
+       if ($output) {
+               $line_name = $output;
+       }
+  }
+  close (CMD3);
+  $data{line} = $line_name;
+
+  $return = { $item[0] => join('/',$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+stack: lsmname
+{
+   $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+lsmname: /[^\.]+/ | <error: illegal clipname>
+extension: 'lsm' | <error: illegal extension>

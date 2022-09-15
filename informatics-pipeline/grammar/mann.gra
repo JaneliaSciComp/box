@@ -1,0 +1,71 @@
+# ****************************************************************************
+# Resource name:  mann.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-01-02
+# Description:    This grammar will parse the qualified stack names
+#                 Mann Lab's ChaCRM images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Some aliases to match other labs
+  $data{transformantid} = 'GMR_' . $data{transformantid};
+  $data{line} = $data{transformantid};
+  $data{external_lab} = 'Mann';
+  $data{view} = '';
+  $data{view} = substr($data{disc},-1,1,'') if ($data{disc} =~ /[dps]$/);
+  # Base directories
+  my $BASE = '/groups/rubin/data0/rubinlab/External_Images/Mann';
+  $data{source_dir} = $BASE;
+  $data{source_file} = $data{file};
+  $data{sage_image} = join('/',@data{qw(external_lab source_file)});
+  $data{img_application} = 'rubin-image';
+  $data{designator} = $data{family} = 'rubin_lab_external';
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{short_file} = $no_ext;
+
+  $return = { $item[0] => join('/',$data{external_lab},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+stack: labid '_' transformantid '_' age '-' disc '-' pattern '-' number
+{
+  my %data = &assign(\%item);
+  my @order = qw(labid transformantid age disc pattern number);
+  $return = { $item[0] => join('_',@data{@order[0..2]}) . '-'
+                          . join('-',@data{@order[3..5]}), %data };
+} | <error: illegal stack>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+transformantid: plate '' well '_' vector '_' landing_site
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error: illegal transformant ID>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+date: /\d{4}(?:0[1-9]|1[012])(?:0[1-9]|[12]\d|3[01])/ | <error: illegal date>
+labid: 'GMR' | <error: illegal lab ID>
+plate: /[1-9][0-9]{0,2}/ | <error: illegal plate>
+well: /[A-H](?:0[1-9]|1[012])/ | <error: illegal well>
+vector: /[A-Z]{2}/ | <error: illegal vector>
+landing_site: /\d{2}/ | <error: illegal landing site>
+age: /[A-Za-z0-9]+/ | <error: illegal age>
+disc: /[A-Za-z0-9]+/ | <error: illegal disc>
+pattern: /[A-Za-z0-9]+/ | <error: illegal pattern>
+number: /[0-9a-z]+/ | <error: illegal number>
+extension: 'jpg' | <error: illegal extension>

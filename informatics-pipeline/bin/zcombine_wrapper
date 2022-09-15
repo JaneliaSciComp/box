@@ -1,0 +1,32 @@
+#!/bin/bash
+
+function printUsageAndExit {
+  echo
+  echo "USAGE: `basename $0` <pipeline> <tracker> <measurement> <output_log_absfile>"
+  echo
+  echo "  where <pipeline> is 'screen|rd'"
+  echo "  where <tracker> is 't4|t5|t6|t1|t2|t3'"
+  echo "  where <measurement> is a valid measurement from /groups/zlatic/home/zlaticm/zcombine_measurements.txt"
+  echo "  where <output_log_absfile> is the absolute file path to a log file unique for this combination of <pipeline> <tracker> <measurement>"
+  exit 1
+}
+
+if [[ $# < 4 ]]; then
+  printUsageAndExit
+fi
+
+
+PIPELINE="$1"
+TRACKER="$2"
+MEASUREMENT="$3"
+OUT_FILE="$4"
+
+#PIPELINE="screen"
+#TRACKER="t99"
+#MEASUREMENT="y"
+#OUT_FILE="/groups/zlatic/home/zlaticm/PIPELINE/test.out"
+
+source /sge/current/default/common/settings.sh
+source /usr/local/SOURCEME
+cd /groups/zlatic/home/zlaticm/PIPELINE
+zcombine -pipeline ${PIPELINE} -tracker ${TRACKER} -measurement ${MEASUREMENT} -concatenate -debug -out ${OUT_FILE}

@@ -1,0 +1,446 @@
+#!/usr/bin/perl
+# ****************************************************************************
+# Resource name:  zcombine
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2010-01-26
+# Description:    See the bottom of this file for the POD documentation.
+#                 Search for the string '=head'.
+# Required resources:
+#   Programs:        NONE
+#   USEd modules:    strict
+#                    warnings
+#                    File::Find
+#                    File::Path
+#                    Getopt::Long
+#                    IO::File
+#                    File::Find
+#                    Parse::RecDescent
+#                    Pod::Text
+#                    Pod::Usage
+#   Config files:    NONE
+#   Input files:     Files under /groups/zlatic/zlaticlab/Data/results
+#   Output files:    Results files written to current directory
+#                    (as specified by -output parm)
+#
+#                               REVISION LOG
+# ----------------------------------------------------------------------------
+# | revision | name            | date    | description                       |
+# ----------------------------------------------------------------------------
+#     1.0     Rob Svirskas      10-01-26  Initial version
+# ****************************************************************************
+
+# Libraries
+use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5';
+use lib '/usr/local/perl5/lib64/perl5/site_perl/5.8.5/x86_64-linux-thread-multi';
+
+# Perl built-ins
+use strict;
+use warnings;
+use File::Find;
+use File::Path;
+use Getopt::Long;
+use IO::File;
+use Parse::RecDescent;
+use Pod::Text;
+use Pod::Usage;
+
+# ****************************************************************************
+# * Constants                                                                *
+# ****************************************************************************
+my $BASE = '/groups/zlatic/zlaticlab/pipeline';
+my $OUTDIR = '/groups/zlatic/zlaticlab/pipeline';
+my $GRAMMAR_FILE = '/usr/local/pipeline/grammar/zlatic.gra';
+
+# ****************************************************************************
+# * Global variables                                                         *
+# ****************************************************************************
+# Command-line parameters
+my ($CONCAT,$DEBUG,$HELP,$PIPELINE,$MEASUREMENT,$TRACKER,$VERBOSE) = (0)x6;
+# HoHoHoA (line/measurement/sequence/filenames)
+my %dathash;
+# Path hash (ident)
+my %path;
+# Parsing
+my %grammar;
+my $parser;
+my $parsed = 0;
+# Handles
+my $handle;
+
+
+# ****************************************************************************
+# * Main                                                                     *
+# ****************************************************************************
+
+# Get the command-line parameters
+GetOptions('pipeline=s'    => \$PIPELINE,
+	   'tracker=s'     => \$TRACKER,
+           'measurement=s' => \$MEASUREMENT,
+           concatenate     => \$CONCAT,
+           'output=s'      => \my $output_file,
+           verbose         => \$VERBOSE,
+           debug           => \$DEBUG,
+           help            => \$HELP)
+  or pod2usage(-1);
+
+# Display help and exit if the -help parm is specified
+pod2text($0),&terminateProgram() if ($HELP);
+
+# Initialize the program
+$VERBOSE = 1 if ($DEBUG);
+&terminateProgram('ERROR: you must specify a tracker') unless ($TRACKER);
+$TRACKER = lc($TRACKER);
+$TRACKER = 't' . $TRACKER unless ($TRACKER =~ /^t/);
+&terminateProgram('ERROR: the tracker must be specified as t<number>')
+  unless ($TRACKER =~ /^t\d+$/);
+
+# Open the output stream
+$handle = ($output_file) ? (new IO::File $output_file,'>'
+              or &terminateProgram("ERROR: could not open $output_file ($!)"))
+                         : (new_from_fd IO::File \*STDOUT,'>'
+              or &terminateProgram("ERROR: could not open STDOUT ($!)"));
+autoflush $handle 1;
+
+# Initialize a recursive descent parser
+print $handle "Initializing recursive descent parser\n" if ($VERBOSE);
+my $stream= new IO::File $GRAMMAR_FILE,'<'
+    or &terminateProgram("Could not open grammar $GRAMMAR_FILE ($!)");
+sysread $stream,my $grammar,-s $stream;
+$stream->close;
+$Parse::RecDescent::skip = undef;
+$parser = new Parse::RecDescent($grammar) || die 'Bad grammar';
+
+# Find files by measurement
+printf $handle "Finding and parsing files in %s\n",
+               join('/',$BASE,$PIPELINE,'choreography-results',$TRACKER) if ($VERBOSE);
+my ($t0,$tt) = (time)x2;
+find(\&findAllMeasurements,join('/',$BASE,$PIPELINE,'choreography-results',$TRACKER));
+printf $handle "Parsed %d file%s in %s\n",$parsed,
+               (1 == $parsed) ? '' : 's',
+               &computeElapsedTime(time-$t0) if ($VERBOSE);
+my %meas;
+foreach (keys %dathash) {
+  foreach my $m (keys %{$dathash{$_}}) {
+    $meas{$m}++;
+  }
+}
+printf $handle "Identifiers: %d\n",scalar(keys %dathash);
+printf $handle "Measurements: %s\n",join(', ',sort keys %meas);
+
+my($processed,$wrote,$processedt,$wrotet) = (0)x4;
+print $handle "Starting processing for tracker $TRACKER\n" if ($VERBOSE);
+my $tp = time;
+foreach my $ident (sort keys %dathash) {
+  my @header = ();
+  $t0 = time;
+  ($processed,$wrote) = (0)x2;
+  foreach my $measurement (sort keys %{$dathash{$ident}}) {
+    # Read files and produce AoA
+    printf $handle "  Processing %d file%s for %s.%s\n",
+                   scalar(@{$dathash{$ident}{$measurement}}),
+                   (1 == scalar(@{$dathash{$ident}{$measurement}})) ? '' : 's',
+                   $ident,$measurement if ($VERBOSE);
+    my @arr = ();
+    my @spaces = ();
+    my($filenum,$maxrow) = (0)x2;
+    my ($cfh,$concat_file);
+    if ($CONCAT) {
+      $concat_file = "$ident.$measurement.r";
+      mkpath $path{$ident} unless (-e $path{$ident});
+      $cfh = new IO::File "$path{$ident}/$concat_file",'>'
+        or &terminateProgram("ERROR: could not open $path{$ident}/$concat_file ($!)");
+    }
+    foreach my $f (@{$dathash{$ident}{$measurement}}) {
+      if ($CONCAT) {
+        print $handle "    Appending $f\n" if ($DEBUG);
+        open HANDLE,$f or &terminateProgram("ERROR: could not open $f ($!)");
+        sysread HANDLE,my $slurp,-s HANDLE;
+        print $cfh "# $f\n$slurp";
+        close(HANDLE);
+        next;
+      }
+      my $i = new IO::File $f,'<'
+        or &terminateProgram("ERROR: could not open $f ($!)");
+      while (defined($_ = $i->getline)) {
+        chomp;
+        if ('blob' eq $measurement) {
+          s/ +/\t/g;
+          my @a = split(/\t/);
+          splice(@a,10,23) if (scalar(@a) == 38);
+          &terminateProgram("$f has " . scalar(@a) . ' columns')
+            unless (scalar(@a) == 15);
+        }
+        elsif ('spine' eq $measurement) {
+          s/ +/\t/g;
+          my @a = split(/\t/);
+          &terminateProgram('.spine file has ' . scalar(@a) . ' columns')
+            unless (scalar(@a) == 23);
+        }
+        elsif ('outline' eq $measurement) {
+          s/ +/\t/g;
+          my @a = split(/\t/);
+        }
+        else {
+          s/ /\t/g;
+        }
+        push @{$arr[$filenum]},$_;
+      }
+      # Skip file if there are no rows
+      next unless (defined @{$arr[$filenum]});
+      my @fr = split(' ',$arr[$filenum][0]);
+      $spaces[$filenum] = scalar(@fr) * 2;
+      printf $handle "      %s (%d x %d)\n",$f,scalar(@{$arr[$filenum]}),
+                     scalar(@fr)
+        if ($DEBUG);
+      $maxrow = $#{$arr[$filenum]} if ($#{$arr[$filenum]} > $maxrow);
+      $i->close;
+      # Experimental section to handle column headers
+      @fr = split(/\t/,$arr[$filenum][0]);
+      push @header,($f)x(scalar @fr);
+      # ---------------------------------------------
+      $filenum++;
+    }
+    if ($CONCAT) {
+      print $handle "    Wrote $concat_file\n" if ($DEBUG);
+      $wrote++;
+      $processed += scalar(@{$dathash{$ident}{$measurement}});
+      next;
+    }
+    # Write combined output
+    my $file = "$ident.$measurement.r";
+    my $cols = 0;
+    $cols += ($_/2) foreach (@spaces);
+    $processed += scalar(@arr);
+    print $handle sprintf "    Combining %d file%s into %dx%d matrix\n",
+                  scalar(@arr),(($#arr) ? 's' : ''),$maxrow,$cols
+      if ($DEBUG);
+#    printf $handle "  Would have %d column header\n",scalar(@header);
+    mkpath $path{$ident} unless (-e $path{$ident});
+    my $h = new IO::File "$path{$ident}/$file",'>'
+      or &terminateProgram("ERROR: could not open $file ($!)");
+    # Experimental section to handle column headers
+    # print $h join(@header,"\t"),"\n";
+    # ---------------------------------------------
+    foreach my $row (0..$maxrow) {
+      foreach my $filenum (0..$#arr) {
+        if ($row > $#{$arr[$filenum]}) {
+          print $h " \t"x($spaces[$filenum]/2);
+        }
+        else {
+          print $h $arr[$filenum][$row],"\t";
+        }
+      }
+      print $h "\n";
+    }
+    $h->close;
+    $wrote++;
+    print $handle "    Wrote $file\n" if ($DEBUG);
+  }
+  printf $handle "  Combined %d files into %d matri%s in %s\n",$processed,
+                 $wrote,(($wrote == 1) ? 'x' : 'ces'),
+                 &computeElapsedTime(time-$t0) if ($VERBOSE);
+  $processedt += $processed;
+  $wrotet += $wrote;
+}
+printf $handle "Combined %d files into %d matri%s in %s\n",$processedt,
+               $wrotet,(($wrotet == 1) ? 'x' : 'ces'),
+               &computeElapsedTime(time-$tp) if ($VERBOSE);
+printf $handle "Run completed in %s\n",&computeElapsedTime(time-$tt);
+# The resulting files may be opened with R:
+# m <- read.csv(file="w1118@none@t1@puff@30s1x60d.x.r",header=FALSE,sep="\t");
+&terminateProgram();
+
+
+# ****************************************************************************
+# * Subroutines                                                              *
+# ****************************************************************************
+
+# ****************************************************************************
+# * Subroutine:  terminateProgram                                            *
+# * Description: This routine will gracefully terminate the program. If a    *
+# *              message is passed in, we exit with a code of -1. Otherwise, *
+# *              we exit with a code of 0.                                   *
+# *                                                                          *
+# * Parameters:  message: the error message to print                         *
+# * Returns:     NONE                                                        *
+# ****************************************************************************
+sub terminateProgram
+{
+  my $message = shift;
+  print { $handle || \*STDERR } "$message\n" if ($message);
+  $handle->close if ($handle);
+  exit(($message) ? -1 : 0);
+}
+
+
+# ****************************************************************************
+# * Subroutine:  findAllMeasurements                                         *
+# * Description: This routine will find all measurement files and add them   *
+# *              to the %dathash structure.                                  *
+# *                                                                          *
+# * Parameters:  NONE                                                        *
+# * Returns:     NONE                                                        *
+# ****************************************************************************
+sub findAllMeasurements
+{
+  return if (-z $_ || !(/(?:dat|outline|spine)$/));
+  return if (($MEASUREMENT) && !((/\.$MEASUREMENT\./) || (/\.$MEASUREMENT$/)));
+  print $handle "  Parsing $_\n" if ($DEBUG);
+  &parseGrammar($_);
+  $parsed++;
+  my $measurement;
+  if (/(blob|outline|spine)$/) {
+    $measurement = $1;
+  }
+  elsif (/\.([^.]+)(?:\.\d+)?\.dat$/) {
+    $measurement = $1;
+  }
+  else {
+    print $handle "  Could not parse measurement from $_\n";
+    return;
+  }
+  return if ($MEASUREMENT && ($MEASUREMENT ne $measurement));
+  # line @ effector @ tracker @ animalno @ stimpro
+  my $ident = join '@',@grammar{qw(line effector tracker stimpro animalno)};
+  print $handle "  Created primary hash key $ident\n"
+    if ($DEBUG && (!(exists $dathash{$ident})));
+  push @{$dathash{$ident}{$measurement}},$File::Find::name;
+  # Set the path
+  my $path = join '@',@grammar{qw(line effector)};
+  $path .= '/' . join('@',@grammar{qw(stimpro animalno)});
+  $path = join('/',$OUTDIR,$PIPELINE,'combiner',$TRACKER,$path);  
+  $path{$ident} = $path;
+  print $handle "  Added $measurement to $ident\n" if ($DEBUG);
+}
+
+
+sub parseGrammar
+{
+  my $item = shift;
+  %grammar = ();
+  my $ret = $parser->stack($item);
+  &terminateProgram("Could not parse line $.:\n$item") unless ($ret);
+  %grammar = %$ret;
+}
+
+
+# ****************************************************************************
+# * Subroutine:  computeElapsedTime                                          *
+# * Description: Convert an elapsed time in Epoch seconds to English         *
+# *              notation. Epoch seconds is the number of seconds past the   *
+# *              "Epoch", which any self-respecting Unix geek know as 00:00  *
+# *              UTC on January 1, 1970.                                     *
+# *                                                                          *
+# * Parameters:  diff: number of seconds between events                      *
+# * Returns:     elapsed time as [D days] HH:MM:SS                           *
+# ****************************************************************************
+sub computeElapsedTime
+{
+my $result = '';
+
+  my $diff = shift;
+  $diff = ($diff - (my $ss = $diff % 60)) / 60;
+  $diff = ($diff - (my $mm = $diff % 60)) / 60;
+  $diff = ($diff - (my $hh = $diff % 24)) / 24;
+  $result = sprintf "%d day%s, ",$diff,(1 == $diff) ? '' : "s"
+      if ($diff >= 1);
+  $result .= sprintf "%02d:%02d:%02d",$hh,$mm,$ss;
+  return($result);
+}
+
+
+# ****************************************************************************
+# * Parse::RecDescent subroutines                                            *
+# ****************************************************************************
+
+# ****************************************************************************
+# * Subroutine:  Parse::RecDescent::assign                                   *
+# * Description: This routine will accept a Parse::RecDescent %item hash     *
+# *              and return a key/value pair for every scalar value, and a   *
+# *              flattened hash for every value that is a hash. Any key      *
+# *              starting with "__" (as in "__RULE__") is ignored.           *
+# *                                                                          *
+# * Parameters:  item_ref: reference to the Parse::RecDescent %item hash     *
+# * Returns:     Flattened Parse::RecDescent %item hash                      *
+# ****************************************************************************
+sub Parse::RecDescent::assign
+{
+  my $item_ref = shift;
+  my %data = ();
+  foreach my $key (grep(!/^__/,keys %$item_ref)) {
+    if ('HASH' eq ref($item_ref->{$key})) {
+      $data{$_} = $item_ref->{$key}{$_} foreach (keys %{$item_ref->{$key}});
+    }
+    elsif ('ARRAY' eq ref($item_ref->{$key})) {
+      (my $nk = $key) =~ s/\(.+//;
+      $data{$nk} = (scalar @{$item_ref->{$key}}) ? $item_ref->{$key}->[0] : '';
+    }
+    else {
+      $data{$key} = $item_ref->{$key};
+    }
+  }
+  return(%data);
+}
+
+
+# ****************************************************************************
+# * POD documentation                                                        *
+# ****************************************************************************
+__END__
+
+=head1 NAME
+
+zcombine - combine Choreography output files for a given tracker
+
+=head1 SYNOPSIS
+
+zcombine -tracker <tracker> [-output <output file>]
+  [-debug | -verbose] [-help]
+
+=head1 DESCRIPTION
+
+This program will process Choreography output files to create combined
+matrices for subsequent analysis.
+
+=head1 RUN INSTRUCTIONS
+This program finds all Choreograpy .dat files under
+/groups/zlatic/zlaticlab/Data/results/<tracker> to produce combined matrices
+in the current directory. Monitoring output goes to STDOUT, unless redirected
+by the -output parameter.
+
+The following options are supported:
+
+  -tracker:  (required) tracker ("t" followed by a number)
+  -verbose:  (optional) verbose monitoring output (chatty)
+  -debug:    (optional) verbose monitoring output (chatty in the extreme)
+  -help:     (optional) display usage help and exit
+
+All output goes to STDOUT, unless redirected by the -output parameter.
+
+=head1 EXAMPLES
+
+zcombine -tracker t1
+
+=head1 EXIT STATUS
+
+The following exit values are returned:
+
+   0  Successful completion
+
+  -1  An error occurred
+
+=head1 BUGS
+
+None known.
+
+=head1 AUTHOR INFORMATION
+
+Copyright 2009 by Howard Hughes Medical Institute
+
+Author: Robert R. Svirskas, HHMI Janelia Farm Research Campus
+
+Address bug reports and comments to:
+svirskasr@janelia.hhmi.org
+
+=cut

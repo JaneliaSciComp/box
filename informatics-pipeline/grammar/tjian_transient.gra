@@ -1,0 +1,69 @@
+# ****************************************************************************
+# Resource name:  tjian_transient.gra          
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2008-10-01
+# Description:    This grammar will parse the qualified stack names
+#                 for Tjian/Singer images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: path
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  $data{line} = $data{dir};
+  # Base directories
+  my $BASE = '/groups/tjian/tjianlab/darzacq/live_cell_imaging/raw_tiffs';
+  my $TARGET = '/groups/tjian/tjianlab/darzacq/live_cell_imaging/transient_tiffs';
+  my $FINAL = '/groups/tjian/tjianlab/darzacq/live_cell_imaging/final_tiffs';
+  $data{source_dir} = join('/',$BASE,@data{qw(dir)});
+  $data{img_application} = 'tjian-image';
+  # The grammar only looks for channel 1 (mCherry) - build other file names
+  $data{red_file} = $data{file};
+  ($data{green_file} = $data{file}) =~ s/w1EM mCherry/w2EM YFP/;
+  ($data{blue_file} = $data{file}) =~ s/w1EM mCherry/w3EM CFP/;
+  # Target directory/file
+  $data{target_dir} = join('/',$TARGET,@data{qw(dir)});
+  (my $tp = $data{timepoint}) =~ s/t//;
+  $tp = sprintf 't%03d',$tp;
+  $data{target_file} = join('_',@data{qw(experiment stagepos)},$tp) . '.jpg';
+  # Final directory/file
+  $data{final_dir} = join('/',$FINAL,@data{qw(dir)});
+  $data{final_file} = join('_',@data{qw(experiment stagepos)}) . '.tif';
+  $data{designator} = 'tjian';
+  $return = { $item[0] => join('/',@data{qw(dir file)}), %data };
+} | <error>
+
+path: dir '/' file
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',@data{qw(dir file)}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+}
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+stack: experiment '_' channel '_' stagepos '_' timepoint
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+dir: /\d+[A-Za-z0-9_\- ]+/ | <error: illegal directory name>
+experiment: /[A-Za-z0-9\- ]+/ | <error: illegal experiment name>
+channel: /w1EM mCherry 100-/ | <error: illegal channel name>
+stagepos: /s\d+/ | <error: illegal stage position>
+timepoint: /t\d+/ | <error: illegal stage position>
+extension: 'TIF' | <error: illegal stack file extension>

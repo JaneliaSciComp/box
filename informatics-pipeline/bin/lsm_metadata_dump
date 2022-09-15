@@ -1,0 +1,101 @@
+#!/usr/bin/perl
+
+use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5';
+use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5/lib64/perl5/5.8.5/x86_64-linux-thread-multi';
+use Zeiss::LSM;
+use Data::Dumper;
+
+my $file = $ARGV[0]
+  || &terminateProgram('You must enter a filename');
+my $lsm;
+eval { $lsm = new Zeiss::LSM({stack => $file}); };
+
+print Dumper($lsm);
+
+
+
+&terminateProgram($@) if ($@);
+my $x = $lsm->cz_private->VoxelSizeX*1e6;
+my $y = $lsm->cz_private->VoxelSizeY*1e6;
+my $z = $lsm->cz_private->VoxelSizeZ*1e6;
+
+print "$x, $y, $z\n";
+
+exit;
+
+
+my %channel;
+$channel{$_->name} = $_->color foreach ($lsm->getChannels);
+foreach my $key (keys %channel) { print "$key $channel{$key}\n" }
+
+my $reference;
+if (exists($channel{'Ch4-T2'}) && exists($channel{'Ch3-T1'})) {
+  $reference = 'Ch4-T2';
+}
+elsif (exists($channel{'Ch1-T1'}) && exists($channel{'Ch2-T2'})) {
+  $reference = 'Ch1-T1';
+}
+elsif (exists($channel{'Ch1-T2'}) && exists($channel{'Ch2-T1'})) {
+  $reference = 'Ch1-T2';
+}
+elsif (exists($channel{'Ch3-T1'}) && exists($channel{'Ch2-T2'})) {
+  $reference = 'Ch3-T1';
+}
+elsif (exists($channel{Ch1}) && exists($channel{Ch2})) {
+  $reference = 'Ch1';
+}
+elsif (exists($channel{'C=0'}) && exists($channel{'C=1'})) {
+  $reference = 'C=0';
+}
+elsif (exists($channel{'Ch4-T2'}) && exists($channel{'Ch3-T1'})
+       && exists($channel{'Ch2-T3'})) {
+  $reference = 'Ch4-T2';
+}
+elsif (exists($channel{'Ch3-T2'}) && exists($channel{'Ch2-T1'})
+       && exists($channel{'Ch1-T3'})) {
+  $reference = 'Ch3-T2';
+}
+elsif (exists($channel{Ch3-T1}) && exists($channel{Ch2-T3})
+       && exists($channel{Ch4-T2})) {
+  $reference = 'Ch3-T1';
+}
+elsif (exists($channel{'Ch2-T2'}) && exists($channel{'ChS1-T1'})) {
+  $reference = 'Ch2-T2';
+}
+else {
+  &terminateProgram('Could not find channel assignments for '
+                    . join(',',sort keys %channel) . " on $file");
+}
+my($chan) = $reference =~ /^(.+)-/;
+my @t = $lsm->getTracks;
+my $num = 0;
+my $chan_num = '';
+foreach my $t ($lsm->getTracks) {
+  foreach ($t->getDatachannels) {
+    if ($chan eq $_->DATACHANNEL_ENTRY_NAME) {
+      $chan_num = $num;
+      last;
+    }
+    $num++;
+  }
+  last if ($chan_num);
+}
+print "$chan_num $x $y $z\n";
+&terminateProgram();
+
+
+# ****************************************************************************
+# * Subroutine:  terminateProgram                                            *
+# * Description: This routine will gracefully terminate the program. If a    *
+# *              message is passed in, we exit with a code of -1. Otherwise, *
+# *              we exit with a code of 0.                                   *
+# *                                                                          *
+# * Parameters:  message: the error message to print                         *
+# * Returns:     NONE                                                        *
+# ****************************************************************************
+sub terminateProgram
+{
+  my $message = shift;
+  print STDERR  "$message\n" if ($message);
+  exit(($message) ? -1 : 0);
+}

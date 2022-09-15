@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# Send a lab's choreography files to STDOUT. This script takes a single
+# parameter: the lab name in lowercase.
+
+case $1 in
+zlatic_screen)
+find /groups/zlatic/zlaticlab/pipeline/screen/tracking-results -mindepth 5 -maxdepth 5 -type f -name "*.summary"  | sed 's/\/groups\/zlatic\/zlaticlab\/pipeline\///' | egrep '^rd|screen' | egrep '\/t15\/|\/t2\/|\/t3\/|\/t4\/|\/t5\/|\/t6\/'
+;;
+
+zlatic_rd)
+find /groups/zlatic/zlaticlab/pipeline/rd/tracking-results -mindepth 5 -maxdepth 5 -type f -name "*.summary"  | sed 's/\/groups\/zlatic\/zlaticlab\/pipeline\///' | egrep '^rd|screen' | egrep '\/t15\/|\/t2\/|\/t3\/|\/t4\/|\/t5\/|\/t6\/'
+;;
+
+larval_screen)
+find /groups/larvalolympiad/larvalolympiad/pipeline/screen/tracking-results -mindepth 5 -maxdepth 5 -follow -name "*.summary"  | sed 's/\/groups\/larvalolympiad\/larvalolympiad\/pipeline\///' | egrep '^rd|screen' | egrep '\/t7\/|\/t8\/|\/t9\/|\/t10\/|\/t11\/|\/t12\/' | egrep -v 't11-old'
+;;
+
+zlatic_screen_tier2)
+find /tier2/zlatic/zlaticlab/pipeline/screen/tracking-results -mindepth 5 -maxdepth 5 -type f -name "*.summary"  | sed 's/\/tier2\/zlatic\/zlaticlab\/pipeline\///' | egrep '^rd|screen' |  egrep '\/t14\/|\/t15\/|\/t2\/|\/t3\/|\/t4\/|\/t5\/|\/t6\/'
+;;
+
+zlatic_rd_tier2)
+find /tier2/zlatic/zlaticlab/pipeline/rd/tracking-results -mindepth 5 -maxdepth 5 -type f -name "*.summary"  | sed 's/\/tier2\/zlatic\/zlaticlab\/pipeline\///' | egrep '^rd|screen' |  egrep '\/t14\/|\/t15\/|\/t2\/|\/t3\/|\/t4\/|\/t5\/|\/t6\/'
+;;
+
+larval_screen_tier2)
+find /tier2/larvalolympiad/larvalolympiad/pipeline/screen/tracking-results -mindepth 5 -maxdepth 5 -follow -name "*.summary"  | sed 's/\/tier2\/larvalolympiad\/larvalolympiad\/pipeline\///' | egrep '^rd|screen' | egrep '\/t7\/|\/t8\/|\/t9\/|\/t10\/|\/t11\/|\/t12\/' | egrep -v 't11-old'
+;;
+esac

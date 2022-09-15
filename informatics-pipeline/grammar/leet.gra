@@ -1,0 +1,150 @@
+# ****************************************************************************
+# Resource name:  leet.gra          
+# Written by:     Rob Svirskas
+# Revision level: 1.1
+# Date released:  2009-08-03
+# Description:    This grammar will parse the qualified stack names
+#                 for the Lee Lab's images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: path
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  $data{heat_shock_minutes} = $data{hs_min};
+  # Base directories
+  my $BASE = '/groups/leet/leetconfocal';
+  $data{img_application} = 'leet-image';
+  # LSM files - WARNING! The file names are not guaranteed unique!
+  $data{lsm_dir} = join('/',$BASE,@data{qw(type_dir line)});
+  $data{source_dir} = $data{lsm_dir};
+  $data{lsm_file} = $data{source_file} = $data{file};
+  # Strip the extension off the file name
+  (my $short = $data{file}) =~ s/\..*$//;
+  $data{short_file} = $short;
+  my $new_dir = $data{line};
+  my $PRODUCT_BASE = '';
+  if ('confocalStacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'Secondary_Data';
+    $data{designator} = $data{family} = 'leet_chacrm';
+  }
+  elsif ('discovery_confocalStacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'discovery_Secondary_Data';
+    $data{designator} = $data{family} = 'leet_discovery';
+  }
+  $BASE = join('/',$BASE,$PRODUCT_BASE);
+  # Projections
+  $data{projection_dir} = join('/',$BASE,'projections',$new_dir);
+  $data{projection_loc} = join('/','projections',$new_dir);
+  $data{projection_all_file} = $data{short_file} . '_total.jpg';
+  $data{projection_pattern1_file} = $data{short_file} . '_p1_total.jpg';
+  $data{projection_pattern2_file} = $data{short_file} . '_p2_total.jpg';
+  # Rotations
+  $data{rotation_dir} = join('/',$BASE,'rotations',$new_dir);
+  $data{rotation_loc} = join('/','rotations',$new_dir);
+  $data{rotation_transient} = $data{short_file} . '.r.avi';
+  $data{rotation_file} = $data{short_file} . '.r.mp4';
+  # Translations (Z stack)
+  $data{translation_dir} = join('/',$BASE,'translations',$new_dir);
+  $data{translation_loc} = join('/','translations',$new_dir);
+  $data{translation_transient} = $data{short_file} . '.t.avi';
+  $data{translation_file} = $data{short_file} . '.t.mp4';
+  # TIFF files
+  $data{tiff_dir} = join('/',$BASE,'tiffs',$new_dir);
+  $data{tiff_loc} = join('/','tiffs',$new_dir);
+  $data{tiff_file} = $data{short_file} . '.tif';
+  # Link directories
+  $data{link_dirs} = '';
+  # Secondary data directories
+  $data{secdata_dirs} = join ' ',@data{map { $_.'_dir' }
+      qw(projection rotation tiff translation)};
+  $data{secdata_store} = join(',',qw(projection_all projection_pattern1
+                                     projection_pattern2 translation rotation
+                                     tiff
+                                     ));
+  $data{substack_store} = join(',',qw(substack_all substack_pattern1
+                                      substack_pattern2));
+
+  $return = { $item[0] => join('/',@data{qw(type_dir line file)}), %data };
+} | <error>
+
+path: type_dir '/' line '/' file
+{
+  my %data = &assign(\%item);
+  $data{line} = $data{rubin_line} || $data{leet_line} || $data{discovery_line};
+  $return = { $item[0] => join('/',@data{qw(type_dir line file)}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $data{stack} = $data{rubin_stack} || $data{leet_stack} || $data{discovery_stack};
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error>
+
+stack: rubin_stack | leet_stack | discovery_stack
+{
+  my %data = &assign(\%item);
+  $return = { %data };
+} | <error>
+
+line: rubin_line | leet_line | discovery_line
+{
+  my %data = &assign(\%item);
+  $return = { %data };
+} | <error>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+rubin_stack: 'TZL' '_' plate '' well '_' vector '_' landing_site '-' gender
+             '' age '' area '_' heat_shock_age '_' hs_min '_' uid
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+rubin_line: 'GMR_' plate '' well '_' vector '_' landing_site
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+leet_stack: 'TZL_' leet_name '-' gender '' age '' area '_' heat_shock_age '_'
+            hs_min '_' uid
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+leet_line: 'TZL_' leet_name
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+discovery_stack: discovery_name
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+plate: /[1-9][0-9]{0,2}/ | <error: illegal plate>
+well: /[A-H](?:0[1-9]|1[012])/ | <error: illegal well>
+vector: /[A-Z]{2}/ | <error: illegal vector>
+landing_site: /\d{2}/ | <error: illegal landing site>
+leet_name: /[A-Za-z][A-Za-z0-9_]*/ | <error: illegal Lee line name>
+gender: /[mfx]/ | <error: illegal gender>
+age: /[AELPX]\d{2}/ | <error: illegal age>
+area: /[bv]/ | <error: illegal area>
+heat_shock_age: /(?:E|[AELPX]\d{2})/ | <error: illegal heat shock age>
+hs_min: /\d{2}/ | <error: illegal heat shock minute>
+uid: /\d{17}/ | <error: illegal UID>
+type_dir: 'confocalStacks' | 'discovery_confocalStacks'
+          | <error: illegal type directory name>
+discovery_line: 'tub_FLIP-GAL4' | <error: illegal discovery line>
+discovery_name: /[A-Za-z0-9-_]*/ | <error: illegal discovery stack name>
+extension: 'lsm' | <error: illegal stack file extension>

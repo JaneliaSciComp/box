@@ -1,0 +1,162 @@
+#!/bin/bash
+
+function prepend_mergefiles_cleanup {
+echo "$1 $2"
+for I in `find $1 -type f -name "*@.$2.[0-9][0-9][0-9][0-9][0-9].dat"`
+  do 
+  Identifier=$(echo $I | xargs basename | cut -d \@ -f 7 | cut -d \. -f 3)
+  Date_time=$(echo $I | xargs basename | cut -d \@ -f 1)
+  Bname="$(echo $I | xargs basename | cut -d \@  -f 1-6)"
+  Dname=`dirname "$I"`
+  Name="$Dname/$Bname" 
+
+  sed -i "s/^/$Date_time /g" $I
+  cat "$I" >> "$Name.$2.dat.tmp" 
+  done
+
+if [ -f "$Name.$2.dat.tmp" ]
+then
+     find $1 -type f -name "*@.$2.[0-9][0-9][0-9][0-9][0-9].dat" -exec rm -f '{}' \;
+     sort -nk2 -nk3 "$Name.$2.dat.tmp" > "$Name.$2.dat"
+     echo "generating combined file: $Name.$2.dat"
+     rm -f "$Name.$2.dat.tmp"
+fi
+
+}
+
+function prepend_mergefiles_cleanup_by_extension {
+echo "$1 $2"
+for I in `find $1 -type f -name "*@.[0-9][0-9][0-9][0-9][0-9].$2"`
+  do 
+  Measurement=$(echo $I | xargs basename | cut -d \@ -f 7 | cut -d \. -f 2)
+  Date_time=$(echo $I | xargs basename | cut -d \@ -f 1)
+  Bname="$(echo $I | xargs basename | cut -d \@  -f 1-6)"
+  Dname=`dirname "$I"`
+  Name="$Dname/$Bname"
+#  echo "$1 $2 $Date_time $Measurement $Name $I"
+
+  sed -i "s/^/$Date_time $Measurement /g" $I
+  cat "$I" >> "$Name.$2.tmp" 
+  done
+
+if [ -f "$Name.$2.tmp" ]
+then
+     find $1 -type f -name "*@.[0-9][0-9][0-9][0-9][0-9].$2" -exec rm -f '{}' \;
+     sort -nk2 -nk3 "$Name.$2.tmp" > "$Name.$2"
+     echo "generating combined file: $Name.$2"
+     rm -f "$Name.$2.tmp"
+fi
+
+}
+
+echo "Job started"`date`;
+
+JAVA='/misc/local/java/bin/java';
+CHORE='/misc/local/MWT/Chore.jar';
+
+CSRC_DIR="$1"
+if [ -z "$CSRC_DIR" ] 
+then
+   CSRC_DIR='$grammar{source_dir}';
+fi
+CDEST_DIR="$2"
+if [ -z "$CDEST_DIR" ]
+then
+   CDEST_DIR='$grammar{dest_dir}';
+fi
+
+CTRACKER="$3"
+if [ -z "$CTRACKER" ]
+then
+   CTRACKER='$grammar{tracker}';
+fi
+
+echo "Repairing .blob files"
+perl /misc/local/pipeline/bin/repair_blob "$CSRC_DIR"
+
+DT=`stat -c '%y' $grammar{source_dir}/$grammar{file} | sed 's/ .*//'`;
+echo "Date/time for $grammar{file} is $DT";
+T=15;
+if [ 't1' == "$CTRACKER" ];
+then
+  if [ "$DT" \> "2012-07-02" ];
+  then
+    PV=0.095238;
+  else
+    PV=0.0899;
+  fi
+elif [ 't2' == "$CTRACKER" ];
+then
+  PV=0.056;
+elif [ 't3' == "$CTRACKER" ];
+then 
+  if [ "$DT" \> "2012-07-14" ];
+  then
+    PV=0.037;
+  else
+    PV=0.068;
+  fi
+elif [ 't4' == "$CTRACKER" ];
+then
+  T=5;
+  PV=0.0899;
+elif [ 't150' == "$CTRACKER" ];
+then
+  PV=0.0288;
+  T=5;
+elif [ 't15' == "$CTRACKER" ];
+then
+  PV=0.125;
+  T=5;
+elif [ 't8' == "$CTRACKER" ];
+then
+  PV=0.1297;
+  T=5;
+elif [ 't5' == "$CTRACKER" ];
+then
+  T=5;
+  if [ "$DT" \> "2011-09-04" ];
+  then
+    PV=0.076923;
+  else
+    PV=0.0899;
+  fi
+elif [ 't6' == "$CTRACKER" ];
+then
+  T=5;
+  if [ "$DT" \> "2012-07-02" ];
+  then
+    PV=0.095238;
+  else
+    PV=0.0899;
+  fi
+else
+  PV=0.03;
+fi
+echo "Tracker $CTRACKER, T-value $T,  p-value $PV"
+
+mkdir -p "$CDEST_DIR"
+
+# ----------------------------------------------------------------------------
+# tracker t1
+# area speed speed085 crabspeed bias dir x y midline morpwidth kink cast
+# curve spine
+# headx heady tailvecx tailvecy
+
+# choreography command to generate skeleton data
+OP="spine";
+$JAVA -jar $CHORE -t $T -s 0.1 -M 1 -p $PV --shadowless --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin SpinesForward::rebias --minimum-biased 3mm -S --nanless --plugin Extract::spine --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup_by_extension "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+# choreography command to generate contour data
+OP="outline";
+$JAVA -jar $CHORE -t $T -s 0.1 -M 1 -p $PV --shadowless --plugin Reoutline::exp --plugin Respine::0.23::tapered=0.28,1,2 --plugin SpinesForward::rebias --minimum-biased 3mm -S --nanless --plugin Extract::outline --target "$CDEST_DIR" "$CSRC_DIR"
+prepend_mergefiles_cleanup_by_extension "$CDEST_DIR" "$OP"
+echo "Completed choreography for $OP"
+
+chmod -R 775 "$CSRC_DIR"
+
+# We're done! Delete this shell script.
+echo "Will delete $0"
+trap "rm -f $0" 0
+echo "Job complete"`date`;

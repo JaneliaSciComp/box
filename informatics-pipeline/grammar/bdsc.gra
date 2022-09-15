@@ -1,0 +1,93 @@
+# ****************************************************************************
+# Resource name:  bdsc.gra      
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2017-09-06
+# Description:    This grammar will parse BDSC stack names
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: frag '/' file
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Some aliases to match other labs
+  my @namedata = split(/\_/, $data{lsmname});
+  $data{transformantid} = $data{lsmname};
+
+  # Base directories
+  my $BASE = '/groups/flylight/flylight/flylightexternal';
+  $data{img_application} = 'flylight-image';
+  $data{family} = 'rubin_lab_external';
+  $data{designator} = 'rubin_lab_external';
+  my $PRIMARY = $BASE . '/confocalStacks/midgut/';
+  my $SECONDARY = '/groups/flylight/flylight/flylightexternal/midgut';
+  # LSM files
+  $data{lsm_dir} = $data{source_dir} = $PRIMARY . $data{frag};
+  $data{lsm_file} = $data{source_file} = $data{file};
+  (my $no_ext = $data{file}) =~ s/\..*$//;
+  $data{sage_image} = join('/',@data{qw(date source_file)});
+  $data{short_file} = $no_ext;
+  # Secondary images
+  foreach (qw(projection translation)) {
+    my $dir = join('/',$SECONDARY,$data{frag});
+    $data{$_ . '_dir'} = $dir;
+    $data{$_ . '_loc'} = $data{frag};
+  }
+  # Projections
+  $data{projection_all_file} = $data{short_file} . '_full_mip.jpg';
+  $data{projection_pattern_file} = $data{short_file} . '_pattern_mip.jpg';
+  # Translations
+  $data{translation_file} = $data{short_file} . '_translation.mp4';
+  # Secondary data directories
+  $data{secdata_dirs} = join ' ',@data{map { $_.'_dir' }
+      qw(projection)};
+  $data{secdata_store} = join(',',qw(projection_all projection_pattern
+                                     translation));
+
+  # Line Name
+  my $line_name = "";
+  (my $f = $data{frag}) =~ s/^R//;
+  my $get_line_name_cmd = '/misc/local/pipeline/bin/get_line_from_fragment ' . $f;
+  open (CMD3, "$get_line_name_cmd |");
+  while (my $output = <CMD3>) {
+    chomp($output);
+    if ($output) {
+      $line_name = $output;
+    }
+  }
+  close (CMD3);
+  $data{line} = $line_name;
+
+  # Presets
+  my $area = "mg";
+  $data{area} = $area;
+  $data{organ} = $data{area};
+  $data{gender} = 'f';
+  $data{published_externally} = 1;
+  $data{publishing_name} = $data{frag};
+  $data{to_publish} = 'Y';
+
+  $return = { $item[0] => join('/',$data{frag},$data{file}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error: illegal stack file>
+
+
+stack: lsmname
+{
+   $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+}
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+frag: /R\d+[A-H]\d+/ | <error: illegal frag>
+lsmname: /[^\.]+/ | <error: illegal clipname>
+extension: 'lsm' | <error: illegal extension>

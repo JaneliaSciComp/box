@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+<description>Generate tertiary data for Rubin CRM (Fly Light screen) imagery</description>
+
+<!-- Grammar file -->
+<grammar>/misc/local/pipeline/grammar/chacrm.gra</grammar>
+<grammar_sample>20130731/GMR_41A01_LJ_21_02-fA01b_C130801_20131212134316951.lsm</grammar_sample>
+
+<!-- Command files to create -->
+<command_file type="ImageJ" in_name="/misc/local/pipeline/template/chacrm_tertiary.imj_tmpl" out_name="$grammar{short_file}.txt" />
+<command_file type="Grid script" in_name="/misc/local/pipeline/template/chacrm_tertiary.bash_tmpl" out_name="$grammar{short_file}.bash" />
+
+<!-- Process flow -->
+<step>
+  <name>Tissue_check</name>
+  <description>Check tissue type</description>
+  <action>equals</action>
+  <value1>$grammar{area}</value1>
+  <value2>b</value2>
+  <pass>Brain</pass>
+  <fail>Not_brain</fail>
+</step>
+<step>
+  <name>Brain</name>
+  <description>Bump "Brain" counter</description>
+  <action>bump_counter</action>
+  <counter>Brain</counter>
+  <pass>Date_check</pass>
+</step>
+<step>
+  <name>Not_brain</name>
+  <description>Bump "Not_a_brain" counter</description>
+  <action>bump_counter</action>
+  <counter>Not_a_brain</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Date_check</name>
+  <description>Check for rework/ramped LSM file</description>
+  <action>file_modified</action>
+  <file>$grammar{lsm_dir}/$grammar{lsm_file}</file>
+  <after>2008-12-31</after>
+  <pass>Registration_check</pass>
+  <fail>Cleanup</fail>
+</step>
+<step>
+  <name>Registration_check</name>
+  <description>Check for completed registration</description>
+  <action>file_exists</action>
+  <file>$grammar{registration_dir}/$grammar{registered_local_tiff}</file>
+  <pass>Projection_check</pass>
+  <fail>Missing_registration</fail>
+</step>
+<step>
+  <name>Missing_registration</name>
+  <description>Bump "Missing registration" counter</description>
+  <action>bump_counter</action>
+  <counter>Registrations_missing</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Projection_check</name>
+  <description>Check for completed projection</description>
+  <action>file_exists</action>
+  <file>$grammar{projection_dir}/$grammar{projection_local_registered}</file>
+  <pass>Found_projection</pass>
+  <fail>Grid</fail>
+</step>
+<step>
+  <name>Found_projection</name>
+  <description>Bump "found" counter</description>
+  <action>bump_counter</action>
+  <counter>Registration_projections_found</counter>
+  <pass>Cleanup</pass>
+</step>
+<step>
+  <name>Grid</name>
+  <description>Submit generated .bash script to grid</description>
+  <action>grid</action>
+  <qsub_args>-N T$grammar{transformantid} -pe batch 9 -b y -cwd</qsub_args>
+  <args>./$grammar{short_file}.bash $grammar{short_file}.txt</args>
+  <stdout>LOGS/$grammar{short_file}.stdout</stdout>
+  <stderr>LOGS/$grammar{short_file}.stderr</stderr>
+  <pass>Good_submit</pass>
+  <fail>Bad_submit</fail>
+</step>
+<step>
+  <name>Good_submit</name>
+  <description>Bump "submit" counter</description>
+  <action>bump_counter</action>
+  <counter>Submissions</counter>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Bad_submit</name>
+  <action>mail_stack</action>
+  <recipient>svirskasr@janelia.hhmi.org</recipient>
+  <pass>Terminal</pass>
+</step>
+<step>
+  <name>Cleanup</name>
+  <action>cleanup</action>
+</step>
+<step>
+  <name>Terminal</name>
+  <action>null</action>
+</step>
+
+</config>

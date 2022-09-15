@@ -1,0 +1,129 @@
+# ****************************************************************************
+# Resource name:  zlatic_peripheral.gra          
+# Written by:     Rob Svirskas
+# Revision level: 1.0
+# Date released:  2011-01-12
+# Description:    This grammar will parse the qualified stack names
+#                 for the Zlatoic Lab's peripheral images.
+# ****************************************************************************
+
+# ****************************************************************************
+# * Rules (non-terminal productions)                                         *
+# ****************************************************************************
+start: path
+{
+  my %data = &assign(\%item);
+  $data{userid} = getlogin || getpwuid($<);
+  # Base directories
+  my $BASE = '/groups/zlatic/zlaticimg';
+  $data{img_application} = 'zlatic-image';
+  $data{line} = $data{transformantid} || $data{wild_stack};
+  # LSM files - WARNING! The file names are not guaranteed unique!
+  $data{lsm_dir} = join('/',$BASE,@data{qw(type_dir line)});
+  $data{source_dir} = $data{lsm_dir};
+  $data{lsm_file} = $data{source_file} = $data{file};
+  $data{sage_image} = join('/',$data{line},$data{lsm_file});
+  # Strip the extension off the file name
+  (my $short = $data{file}) =~ s/\..*$//;
+  $data{short_file} = $short;
+  my $PRODUCT_BASE = '';
+  if ('peripheralConfocalStacks' eq $data{type_dir}) {
+    $PRODUCT_BASE = 'peripheralSecData';
+    $data{designator} = 'zlatic_peripheral';
+  }
+  $BASE = join('/',$BASE,$PRODUCT_BASE);
+  # Projections
+  $data{projection_dir} = join('/',$BASE,'projections',$data{line});
+  $data{projection_loc} = join('/','projections',$data{line});
+  $data{projection_all_file} = $data{short_file} . '_total.jpg';
+  $data{projection_pattern_file} = $data{short_file} . '_ch2_pat.jpg';
+  $data{projection_reference_file} = $data{short_file} . '_ch1_ref.jpg';
+  # Link directories
+  $data{link_dirs} = '';
+
+  # Channel Assignments
+  my $list_img_channel_cmd = '/misc/local/pipeline/bin/list_img_channels ' .  $data{lsm_dir} . "/" . $data{lsm_file};
+  my ($red_chan, $green_chan, $blue_chan, $ref_chan_num, $detect);
+  open(CMD, "$list_img_channel_cmd |");
+  my $detect = 0;
+  while (my $output = <CMD>) {
+    chomp($output);
+    unless ($output =~ /Error/) {
+        ($red_chan, $green_chan, $blue_chan, $ref_chan_num) = split(/\t/,$output);
+        $detect = 1;
+    }
+  }
+  close(CMD);
+
+  $data{detect_chan} = $detect;
+  $data{lsm_red_chan} = $red_chan;
+  $data{lsm_green_chan} =  $green_chan;
+  $data{lsm_blue_chan} = $blue_chan;
+
+  # Secondary data directories
+  $data{secdata_dirs} = join ' ',@data{map { $_.'_dir' }
+      qw(projection)};
+  $data{secdata_store} = join(',',qw(projection_all projection_pattern
+                                     projection_reference));
+  $return = { $item[0] => join('/',@data{qw(type_dir line file)}), %data };
+} | <error>
+
+path: type_dir '/' line '/' file
+{
+  my %data = &assign(\%item);
+  $return = { $item[0] => join('/',@data{qw(type_dir line file)}), %data };
+} | <error>
+
+file: stack '.' extension
+{
+  my %data = &assign(\%item);
+  $data{stack} = $data{rubin_stack} || $data{wild_stack};
+  $return = { $item[0] => $data{stack} . '.' . $data{extension}, %data };
+} | <error>
+
+line: transformantid | wild_line
+{
+  my %data = &assign(\%item);
+  return $data{transformantid} || $data{wild_line};
+} | <error>
+
+stack: rubin_stack | wild_stack
+{
+  my %data = &assign(\%item);
+  $return = { %data };
+} | <error>
+
+# ****************************************************************************
+# * Rules (terminal productions)                                             *
+# ****************************************************************************
+
+rubin_stack: labid '_' plate '' well '_' vector '_' landing_site '_' 'zp' specimen '_' file_type '_' uid
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error>
+
+transformantid: labid '_' plate '' well '_' vector '_' landing_site
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error: illegal transformant ID>
+
+wild_stack: wild_line '_' 'zp' specimen '_' file_type '_' uid
+{
+  $return = { $item[0] => join('',@item[1..$#item]), &assign(\%item) };
+} | <error: illegal transformant ID>
+
+# ****************************************************************************
+# * Terminals                                                                *
+# ****************************************************************************
+wild_line: /[A-Za-z0-9\-]+/ | <error: illegal line name>
+labid: 'GMR' | <error: illegal lab ID>
+plate: /[1-9][0-9]{0,2}/ | <error: illegal plate>
+well: /[A-H](?:0[1-9]|1[012])/ | <error: illegal well>
+vector: /[A-Z]{2}/ | <error: illegal vector>
+landing_site: /\d{2}/ | <error: illegal landing site>
+specimen: /\d+/ | <error: illegal specimen number>
+file_type: /(All|Tile)/ | <error: illegal file type>
+uid: /\d{17}/ | <error: illegal UID>
+type_dir: 'peripheralConfocalStacks'
+          | <error: illegal type directory name>
+extension: 'lsm' | <error: illegal stack file extension>
