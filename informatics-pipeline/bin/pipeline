@@ -7,8 +7,8 @@ pipeline_bin_folder_path=$(dirname "$this_script_file_path")
 informatics_pipeline_root_path=$( dirname "$pipeline_bin_folder_path" )
 box_root_path=$( dirname "$informatics_pipeline_root_path" )
 printf "In pipeline, box_root_path: $box_root_path\n"
-#our_perl5_root_folder_path="${box_root_path}/local/perl5"
-our_perl5_root_folder_path="/misc/local/perl5"
+our_perl5_root_folder_path="${box_root_path}/local/perl5"
+#our_perl5_root_folder_path="/misc/local/perl5"
 printf "In pipeline, our_perl5_root_folder_path: $our_perl5_root_folder_path\n"
 #PERL5LIB="${our_perl5_root_folder_path}/lib64/perl5/site_perl/5.8.5/x86_64-linux-thread-multi:${our_perl5_root_folder_path}/lib/perl5/site_perl/5.8.5"
 PERL5LIB="${our_perl5_root_folder_path}/lib/perl5/site_perl/5.8.5"
