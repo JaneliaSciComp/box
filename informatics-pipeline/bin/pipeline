@@ -41,7 +41,7 @@
 use strict;
 use File::Basename;
 my $this_script_path = __FILE__ ;
-print "this_script_path: $this_script_path\n"
+print "this_script_path: $this_script_path\n" ;
 my $informatics_pipeline_root_path = dirname(dirname($this_script_path)) ;
 my $box_root_folder_path = dirname($informatics_pipeline_root_path) ;
 my $our_perl5_root_path = "$box_root_folder_path/local/perl5" ;  # used to be /misc/local/perl5
