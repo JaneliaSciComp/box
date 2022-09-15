@@ -11,8 +11,8 @@
 # Parameters:     $1: 
 # ****************************************************************************
 
-# Where are we?
-printf "In avi_extract.bash_tmpl, PWD is ${PWD}\n"
+# # Where are we?
+# printf "In avi_extract.bash_tmpl, PWD is ${PWD}\n"
 
 # Required resources
 
@@ -23,6 +23,12 @@ then
 	exit 1
 fi
 
+# Need to find 'our' Python interpreter
+#tube_splitter_folder_path=${PWD}
+scripts_folder_path="$grammar{pipeline_scripts_path}"
+box_root_folder_path=$( dirname "${scripts_folder_path}" )
+python_interpreter_path="${box_root_folder_path}/local/python-2.7.11/bin/python2"
+printf "In avi_extract.bash_tmpl, python_interpreter_path is ${python_interpreter_path}\n"
 
 cd "$grammar{avi_dir_path}"
 
@@ -49,11 +55,11 @@ fi
 # check for existing ROI file
 if [ -e "$grammar{avi_roi_path}" ]; then
   echo "Found ROI";
-  python2 "$grammar{pipeline_scripts_path}/TubeSplitter/extract_tubes.py" -r "$grammar{avi_roi_path}" "$grammar{avi_file_path}"
+  ${python_interpreter_path} "$grammar{pipeline_scripts_path}/TubeSplitter/extract_tubes.py" -r "$grammar{avi_roi_path}" "$grammar{avi_file_path}"
 else
 # if it does not exists use default ROI.txt
   echo "Using Default ROI";
-  python2 "$grammar{pipeline_scripts_path}/TubeSplitter/extract_tubes.py" -r "$grammar{pipeline_scripts_path}/TubeSplitter/ROI.txt" "$grammar{avi_file_path}"
+  ${python_interpreter_path} "$grammar{pipeline_scripts_path}/TubeSplitter/extract_tubes.py" -r "$grammar{pipeline_scripts_path}/TubeSplitter/ROI.txt" "$grammar{avi_file_path}"
 fi
 
 #check to see if 6 tube files are created
