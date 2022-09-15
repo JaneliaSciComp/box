@@ -3,6 +3,7 @@
 use strict;
 use Cwd;
 use Getopt::Long;
+use File::Basename;
 
 # setup options;
 # Ignore args with no options (eg, the list of files)
@@ -31,10 +32,17 @@ if ( $options->{'H'} || $options->{'-help'} || $options->{'help'}) {
         exit 0;
 }
 
-my $calcbg_param_file = "/groups/reiser/home/boxuser/lib/sbmoviesuite/sbparam-calcbg.txt";
+# Sort out where various folders, files of interest are
+my $sbmoviesuite_folder_path = dirname(__FILE__)
+my $box_root_folder_path = dirname($sbmoviesuite_folder_path)
+my $sce_root_folder_path = "$box_root_folder_path/local/SCE"  # used to be /misc/local/SCE
+my $cots_folder_path = "$sce_root_folder_path/SCE/build/COTS"
+my $python2_interpreter_path = "$box_root_folder_path/local/old_software/python-2.7.11/bin/python"  # used to me /misc/local/old_software/python-2.7.11/bin/python
+
+my $calcbg_param_file = "$sbmoviesuite_folder_path/sbparam-calcbg.txt";
 $calcbg_param_file = $options->{'bp'} if ($options->{'bp'});
 
-my $usebg_param_file = "/groups/reiser/home/boxuser/lib/sbmoviesuite/sbparam-usebg.txt";
+my $usebg_param_file = "$sbmoviesuite_folder_path/sbparam-usebg.txt";
 $usebg_param_file = $options->{'cp'} if ($options->{'cp'});
 
 my $current_dir = getcwd;
@@ -43,8 +51,8 @@ print "current_dir: $current_dir\n";
 my $random = int(rand($$));
 my $bg_run_id = "sbconvert_" . $random;
 
-
-my $cmd = qq~/groups/reiser/home/boxuser/lib/sbmoviesuite/sbconvert.sh "$current_dir/" -p $calcbg_param_file~;
+my $sbconvertdotsh_path = "$sbmoviesuite_folder_path/sbconvert.sh"
+my $cmd = qq~$sbconvertdotsh_path "$current_dir/" -p $calcbg_param_file~;
 
 print "generating background: $cmd\n";
 
@@ -60,7 +68,7 @@ while( (my $filename = readdir(DIR))){
      if ($filename =~ /\.avi$/) {
         my $sgeid = "sbconvert_" . $filename . "_" . $$;
         my $shfilename = $sgeid . ".sh";
-        write_qsub_sh($shfilename,$filename,$usebg_param_file);
+        write_qsub_sh($shfilename,$filename,$usebg_param_file,$sbconvertdotsh_path,$cots_folder_path,$python2_interpreter_path);
         #my $sbconvert_cmd = qq~bsub -J $sgeid -oo ./$shfilename.stdouterr.txt -eo ./$shfilename.stdouterr.txt -n 2 ./$shfilename~;
         my $sbconvert_cmd = qq~bsub -J $sgeid -o /dev/null -e /dev/null -n 2 ./$shfilename~;
         print "submitting to cluster: $sbconvert_cmd\n";
@@ -74,11 +82,11 @@ print "It will take a few minutes for the sbfmf conversion to finish\n";
 exit;
 
 sub write_qsub_sh {
-	my ($shfilename,$filename,$usebg_param_file) = @_;
+	my ($shfilename,$filename,$usebg_param_file,$sbconvertdotsh_path,$cots_folder_path,$python2_interpreter_path) = @_;
 	
 	open(SHFILE,">$shfilename") || die 'Cannot write $shfilename';
 
-	print SHFILE qq~#!/bin/csh -f
+	print SHFILE qq~#!/bin/bash
 # sbconvert.py test script: calculate background on cluster; this
 #   script will be qsub'd
 
@@ -86,14 +94,14 @@ sub write_qsub_sh {
 #   since sbconvert doesn't require a screen
 
 # set up the environment
-source /misc/local/SCE/SCE/build/Modules-3.2.6/Modules/3.2.6/init/tcsh
-module use /misc/local/SCE/SCE/build/COTS
+#source /misc/local/SCE/SCE/build/Modules-3.2.6/Modules/3.2.6/init/tcsh
+module use $cots_folder_path
 module avail
 module load cse-build
 module load cse/ctrax/latest
 
 # call the main script, passing in all command-line parameters
-/misc/local/old_software/python-2.7.11/bin/python /groups/reiser/home/boxuser/lib/sbmoviesuite/sbconvert.py $filename -p $usebg_param_file
+$python2_interpreter_path $sbconvertdotsh_path $filename -p $usebg_param_file
 
 ~;
 

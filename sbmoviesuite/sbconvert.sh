@@ -6,9 +6,20 @@
 # adapted from Mark Bolstad's "mtrax_batch"; removed the xvfb calls
 #   since sbconvert doesn't require a screen
 
+# Determine the path to this script file, and the folder containing it
+BASH_SOURCE_0=${BASH_SOURCE[0]}
+printf "BASH_SOURCE_0: $BASH_SOURCE_0\n"
+SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE[0]})
+printf "SCRIPT_FILE_PATH: $SCRIPT_FILE_PATH\n"
+SCRIPT_FOLDER_PATH=$(dirname "$SCRIPT_FILE_PATH")
+
+SCE_RAW_PATH="${SCRIPT_FOLDER_PATH}/../local/SCE"
+SCE_PATH=$(realpath ${SCE_RAW_PATH})
+printf "SCE_PATH: $SCE_PATH\n"
+
 # set up the environment
-#source /misc/local/SCE/SCE/build/Modules-3.2.6/Modules/3.2.6/init/tcsh
-module use /misc/local/SCE/SCE/build/COTS
+#module use /misc/local/SCE/SCE/build/COTS
+module use "${SCE_PATH}/SCE/build/COTS"
 module avail
 module load cse-build
 module load cse/ctrax/latest
@@ -21,9 +32,4 @@ module unload cse/scipy/0.10.0
 module load cse/scipy/0.8.0
 
 # call the main script, passing in all command-line parameters
-BASH_SOURCE_0=${BASH_SOURCE[0]}
-printf "BASH_SOURCE_0: $BASH_SOURCE_0\n"
-SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE[0]})
-printf "SCRIPT_FILE_PATH: $SCRIPT_FILE_PATH\n"
-SCRIPT_FOLDER_PATH=$(dirname "$SCRIPT_FILE_PATH")
-python $SCRIPT_FOLDER_PATH/sbconvert.py $*
+python2 $SCRIPT_FOLDER_PATH/sbconvert.py $*

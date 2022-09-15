@@ -67,10 +67,10 @@ elif [ $# -eq 1 ]; then
                     # Use generic temp space.
                     export MCR_CACHE_ROOT=/tmp/mcr_cache_root.$USER.$JOB_ID
                     
-                    # If we're on a compute node then let SciComp know that this user might need a scratch area created.
-                    if [ -f '/misc/local/matutil/no_cluster_scratch.log' -a -n "`hostname | grep '^f[0-9][0-9]'`" ]; then
-                        echo -e "`date +'%F %T'`\t$USER\t$JOB_ID" >> /misc/local/matutil/no_cluster_scratch.log
-                    fi
+                    # # If we're on a compute node then let SciComp know that this user might need a scratch area created.
+                    # if [ -f '/misc/local/matutil/no_cluster_scratch.log' -a -n "`hostname | grep '^f[0-9][0-9]'`" ]; then
+                    #     echo -e "`date +'%F %T'`\t$USER\t$JOB_ID" >> /misc/local/matutil/no_cluster_scratch.log
+                    # fi
                 fi
                 
                 #export MCR_CACHE_VERBOSE=1
