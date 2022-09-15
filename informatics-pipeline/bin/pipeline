@@ -49,8 +49,8 @@ print STDERR "our_perl5_root_path: $our_perl5_root_path\n" ;
 
 # Libraries
 print STDERR "INC before: @INC\n";
-use lib "$our_perl5_root_path/lib/perl5/site_perl/5.8.5";
-use lib "$our_perl5_root_path/lib64/perl5/site_perl/5.8.5/x86_64-linux-thread-multi";
+use lib "$our_perl5_root_path/foo/lib/perl5/site_perl/5.8.5";
+use lib "$our_perl5_root_path/foo/lib64/perl5/site_perl/5.8.5/x86_64-linux-thread-multi";
 print STDERR "INC after: @INC\n";
 
 # # Perl built-ins
