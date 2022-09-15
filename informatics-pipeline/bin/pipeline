@@ -37,12 +37,19 @@
 #     1.5     Rob Svirskas      17-07-18  Added lsf action.
 # ****************************************************************************
 
+# Find our libraries
+use strict;
+use File::Basename;
+my $this_script_path = __FILE__
+my $informatics_pipeline_root_path = dirname(dirname($this_script_path))
+my $box_root_folder_path = dirname($informatics_pipeline_root_path)
+my $our_perl5_root_path = "$box_root_folder_path/local/perl5"  # used to be /misc/local/perl5
+
 # Libraries
-use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5';
-use lib '/usr/local/perl5/lib64/perl5/site_perl/5.8.5/x86_64-linux-thread-multi';
+use lib "$our_perl5_root_path/lib/perl5/site_perl/5.8.5";
+use lib "$our_perl5_root_path/lib64/perl5/site_perl/5.8.5/x86_64-linux-thread-multi";
 
 # Perl built-ins
-use strict;
 use warnings;
 use Cwd qw(abs_path);
 use Getopt::Long;
