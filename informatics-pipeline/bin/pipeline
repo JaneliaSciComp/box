@@ -47,9 +47,11 @@ my $box_root_folder_path = dirname($informatics_pipeline_root_path) ;
 my $our_perl5_root_path = "$box_root_folder_path/local/perl5" ;  # used to be /misc/local/perl5
 print STDERR "our_perl5_root_path: $our_perl5_root_path\n" ;
 
-# # Libraries
-# use lib "$our_perl5_root_path/lib/perl5/site_perl/5.8.5";
-# use lib "$our_perl5_root_path/lib64/perl5/site_perl/5.8.5/x86_64-linux-thread-multi";
+# Libraries
+print STDERR "INC before: @INC\n";
+use lib "$our_perl5_root_path/lib/perl5/site_perl/5.8.5";
+use lib "$our_perl5_root_path/lib64/perl5/site_perl/5.8.5/x86_64-linux-thread-multi";
+print STDERR "INC after: @INC\n";
 
 # # Perl built-ins
 # use warnings;
