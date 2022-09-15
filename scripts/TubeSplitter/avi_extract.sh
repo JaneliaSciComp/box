@@ -11,7 +11,10 @@ SCRIPT_FOLDER_PATH=$(dirname "$SCRIPT_FILE_PATH")
 printf "SCRIPT_FOLDER_PATH: $SCRIPT_FOLDER_PATH\n"
 SCRIPTS_FOLDER_PATH=$( dirname "$SCRIPT_FOLDER_PATH" )
 printf "SCRIPTS_FOLDER_PATH: $SCRIPTS_FOLDER_PATH\n"
-export PATH="$PATH:/misc/sc/pipeline/bin:$SCRIPTS_FOLDER_PATH/bin"
+BOX_ROOT_PATH = $( dirname "$SCRIPTS_FOLDER_PATH" )
+printf "BOX_ROOT_PATH: $BOX_ROOT_PATH\n"
+PIPELINE_ROOT_PATH="$BOX_ROOT_PATH/informatics-pipeline"
+export PATH="$PATH:$PIPELINE_ROOT_PATH/bin:$SCRIPTS_FOLDER_PATH/bin"
 
 #source /misc/local/SOURCEME
 #source "$SCRIPTS_FOLDER_PATH/SOURCEME"
@@ -20,17 +23,17 @@ echo "Milestone 1"
 echo "Milestone 2"
 #pipeline_scripts_dir=$(dirname "$tube_splitter_dir")
 #pipeline_dir=$("$SCRIPTS_FOLDER_PATH/Tools/pipeline_settings.pl" pipeline_root)
-pipeline_dir=`pwd`
-printf "pipeline_dir: $pipeline_dir\n"
+#BOX_ROOT_PATH=`pwd`
+printf "BOX_ROOT_PATH: $BOX_ROOT_PATH\n"
 echo "Milestone 3"
 
 # Make sure each experiment has a "Logs" directory.
-for exp_name in `ls "$pipeline_dir/00_incoming" 2>/dev/null`
+for exp_name in `ls "$BOX_ROOT_PATH/00_incoming" 2>/dev/null`
 do
-    mkdir -p "$pipeline_dir/00_incoming/$exp_name/Logs"
+    mkdir -p "$BOX_ROOT_PATH/00_incoming/$exp_name/Logs"
 done
 echo "Milestone 4"
-cd "$pipeline_dir"/00_incoming
+cd "$BOX_ROOT_PATH"/00_incoming
 ls */*/*seq*.avi 2>/dev/null | grep -v '_tube' >/tmp/stacks.boxuser_avi_extract;
 echo "Milestone 5"
 if [ -s /tmp/stacks.boxuser_avi_extract ]

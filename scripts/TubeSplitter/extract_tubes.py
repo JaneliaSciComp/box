@@ -1,7 +1,13 @@
 import getopt, os.path, struct, sys
 import numpy as N
 
-sys.path += ['/misc/sc/sbmoviesuite']
+this_script_path = os.path.realpath(__file__)
+tube_splitter_folder_path = os.path.dirname(this_script_path)
+scripts_folder_path = os.path.dirname(tube_splitter_folder_path)
+box_root_folder_path = os.path.dirname(scripts_folder_path)
+sbmoviesuite_folder_path = os.path.join(box_root_folder_path, 'sbmoviesuite')  # used to be /misc/sc/sbmoviesuite
+
+sys.path += [sbmoviesuite_folder_path]
 from sbmovielib import movies
 
 # Parse the command line arguments.
