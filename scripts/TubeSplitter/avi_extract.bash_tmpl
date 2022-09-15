@@ -11,6 +11,9 @@
 # Parameters:     $1: 
 # ****************************************************************************
 
+# Where are we?
+printf "In avi_extract.bash_tmpl, PWD is ${PWD}\n"
+
 # Required resources
 
 # The current working directory should be the TubeSplitter directory.
