@@ -4,6 +4,3 @@
 [submodule "tpt"]
 	path = tpt
 	url = https://github.com/JaneliaSciComp/tpt
-[submodule "informatics-pipeline"]
-	path = informatics-pipeline
-	url = https://github.com/JaneliaSciComp/informatics-pipeline
