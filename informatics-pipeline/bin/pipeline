@@ -1,14 +1,14 @@
 #!/usr/bin/bash
 
 # Set up the Perl libraries path env var
-BASH_SOURCE_0=${BASH_SOURCE[0]}
-SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE[0]})
-PIPELINE_BIN_FOLDER_PATH=$(dirname "$SCRIPT_FILE_PATH")
-informatics_pipeline_root_path=$( dirname "$PIPELINE_BIN_FOLDER_PATH" )
-BOX_ROOT_PATH=$( dirname "$informatics_pipeline_root_path" )
-printf "BOX_ROOT_PATH: $BOX_ROOT_PATH\n"
-our_perl5_root_folder_path="$BOX_ROOT_PATH/local/perl5"
+bash_source_0=${BASH_SOURCE[0]}
+this_script_file_path=$(realpath ${bash_source_0})
+pipeline_bin_folder_path=$(dirname "$this_script_file_path")
+informatics_pipeline_root_path=$( dirname "$pipeline_bin_folder_path" )
+box_root_path=$( dirname "$informatics_pipeline_root_path" )
+printf "In pipeline, box_root_path: $box_root_path\n"
+our_perl5_root_folder_path="$box_root_path/local/perl5"
 export PERL5LIB="${our_perl5_root_folder}/lib/perl5/site_perl/5.8.5:${our_perl5_root_folder}/lib64/perl5/site_perl/5.8.5/x86_64-linux-thread-multi"
 
 # Call the pipeline Perl script, passing in the args to this script
-"${PIPELINE_BIN_FOLDER_PATH}/pipeline.pl" "$@"
+"${pipeline_bin_folder_path}/pipeline.pl" "$@"
