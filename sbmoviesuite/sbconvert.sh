@@ -9,13 +9,14 @@
 # Determine the path to this script file, and the folder containing it
 BASH_SOURCE_0=${BASH_SOURCE[0]}
 printf "BASH_SOURCE_0: $BASH_SOURCE_0\n"
-SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE[0]})
-printf "SCRIPT_FILE_PATH: $SCRIPT_FILE_PATH\n"
-SCRIPT_FOLDER_PATH=$(dirname "$SCRIPT_FILE_PATH")
-
-SCE_RAW_PATH="${SCRIPT_FOLDER_PATH}/../local/SCE"
-SCE_PATH=$(realpath ${SCE_RAW_PATH})
+THIS_SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE_0})
+printf "THIS_SCRIPT_FILE_PATH: $THIS_SCRIPT_FILE_PATH\n"
+SBMOVIE_SUITE_FOLDER_PATH=$(dirname "$THIS_SCRIPT_FILE_PATH")
+BOX_ROOT_PATH=$(dirname "$SBMOVIE_SUITE_FOLDER_PATH")
+SCE_PATH="${BOX_ROOT_PATH}/local/SCE"
 printf "SCE_PATH: $SCE_PATH\n"
+python2_interpreter_path="$BOX_ROOT_PATH/local/old_software/python-2.7.11/bin/python"  # used to me /misc/local/old_software/python-2.7.11/bin/python
+
 
 # set up the environment
 #module use /misc/local/SCE/SCE/build/COTS
@@ -32,4 +33,4 @@ module unload cse/scipy/0.10.0
 module load cse/scipy/0.8.0
 
 # call the main script, passing in all command-line parameters
-python2 $SCRIPT_FOLDER_PATH/sbconvert.py $*
+$python2_interpreter_path "$SBMOVIE_SUITE_FOLDER_PATH/sbconvert.py" $*
