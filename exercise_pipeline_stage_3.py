@@ -104,7 +104,7 @@ def main() :
     # run_subprocess(['rm', '-rf', incoming_folder_path])
     run_subprocess(['rm', '-rf', './00_quarantine_not_split'])
     run_subprocess(['rm', '-rf', './01_quarantine_not_compressed'])
-    run_subprocess(['rm', '-rf', './01_sbfmf_compressed'])
+    #run_subprocess(['rm', '-rf', './01_sbfmf_compressed'])
     run_subprocess(['rm', '-rf', './02_fotracked'])
 
     # # And now make a fresh 00_incoming folder
