@@ -51,7 +51,7 @@ print "current_dir: $current_dir\n";
 my $random = int(rand($$));
 my $bg_run_id = "sbconvert_" . $random;
 
-my $sbconvertdotsh_path = "$sbmoviesuite_folder_path/sbconvert.sh"
+my $sbconvertdotsh_path = "$sbmoviesuite_folder_path/sbconvert.sh";
 my $cmd = qq~$sbconvertdotsh_path "$current_dir/" -p $calcbg_param_file~;
 
 print "generating background: $cmd\n";
