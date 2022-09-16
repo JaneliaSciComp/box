@@ -15,7 +15,7 @@ SBMOVIE_SUITE_FOLDER_PATH=$(dirname "$THIS_SCRIPT_FILE_PATH")
 BOX_ROOT_PATH=$(dirname "$SBMOVIE_SUITE_FOLDER_PATH")
 SCE_PATH="${BOX_ROOT_PATH}/local/SCE"
 printf "SCE_PATH: $SCE_PATH\n"
-python2_interpreter_path="$BOX_ROOT_PATH/local/old_software/python-2.7.11/bin/python"  # used to me /misc/local/old_software/python-2.7.11/bin/python
+python2_interpreter_path="$BOX_ROOT_PATH/local/python-2.7.11/bin/python"  # used to me /misc/local/old_software/python-2.7.11/bin/python
 
 
 # set up the environment
