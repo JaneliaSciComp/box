@@ -24,6 +24,7 @@
   <counter>Exists</counter>
   <pass>Cleanup</pass>
 </step>
+<!--
 <step>
   <name>Add_item</name>
   <description>Append found item to mail message</description>
@@ -32,6 +33,7 @@
   <recipient>taylora@janelia.hhmi.org</recipient>
   <pass>Grid</pass>
 </step>
+-->
 <step>
   <name>Grid</name>
   <description>Submit generated .bash script to grid</description>
@@ -51,12 +53,14 @@
   <counter>Submissions</counter>
   <pass>Terminal</pass>
 </step>
+<!--
 <step>
   <name>Bad_submit</name>
   <action>mail_stack</action>
   <recipient>taylora@janelia.hhmi.org</recipient>
   <pass>Terminal</pass>
 </step>
+-->
 
 <step>
   <name>Cleanup</name>
