@@ -35,7 +35,7 @@ do
         chmod 775 "$output_dir_path"
         
         "${fotrak_dir}/build/distrib/fo_trak" \
-            "${fotrak_dir}/FO_Trak/params_Olympiad.txt \
+            "${fotrak_dir}/FO_Trak/params_Olympiad.txt" \
             "${sbfmf_path}" \
             "${output_dir_path}"
     fi
