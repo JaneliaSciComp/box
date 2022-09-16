@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 #echo "Before profile.lsf"
 #. /misc/lsf/conf/profile.lsf
 #echo "Past profile.lsf"
 
 BASH_SOURCE_0=${BASH_SOURCE[0]}
 printf "BASH_SOURCE_0: $BASH_SOURCE_0\n"
-SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE[0]})
+SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE_0})
 printf "SCRIPT_FILE_PATH: $SCRIPT_FILE_PATH\n"
 SCRIPT_FOLDER_PATH=$(dirname "$SCRIPT_FILE_PATH")
 printf "SCRIPT_FOLDER_PATH: $SCRIPT_FOLDER_PATH\n"

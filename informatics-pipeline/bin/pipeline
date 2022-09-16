@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # Set up the Perl libraries path env var
 bash_source_0=${BASH_SOURCE[0]}

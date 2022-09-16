@@ -1,25 +1,24 @@
-#!/bin/sh
-#. /misc/lsf/conf/profile.lsf
-#source /misc/local/SOURCEME
+#!/bin/bash
 
 BASH_SOURCE_0=${BASH_SOURCE[0]}
 printf "BASH_SOURCE_0: $BASH_SOURCE_0\n"
-SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE[0]})
+SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE_0})
 printf "SCRIPT_FILE_PATH: $SCRIPT_FILE_PATH\n"
 SCRIPT_FOLDER_PATH=$(dirname "$SCRIPT_FILE_PATH")
 printf "SCRIPT_FOLDER_PATH: $SCRIPT_FOLDER_PATH\n"
 SCRIPTS_FOLDER_PATH=$( dirname "$SCRIPT_FOLDER_PATH" )
 printf "SCRIPTS_FOLDER_PATH: $SCRIPTS_FOLDER_PATH\n"
-export PATH="$PATH:/misc/sc/pipeline/bin:$SCRIPTS_FOLDER_PATH/bin"
-#export PATH="$PATH:/groups/reiser/home/boxuser/pipeline/bin:$SCRIPTS_FOLDER_PATH/bin"
-#source "$SCRIPTS_FOLDER_PATH/SOURCEME"
+BOX_ROOT_PATH=$( dirname "$SCRIPTS_FOLDER_PATH" )
+printf "BOX_ROOT_PATH: $BOX_ROOT_PATH\n"
+PIPELINE_ROOT_PATH="$BOX_ROOT_PATH/informatics-pipeline"
+export PATH="$PATH:$PIPELINE_ROOT_PATH/bin:$SCRIPTS_FOLDER_PATH/bin"
 
 #avi_sbfmf_dir=$(cd "$(dirname "$0")"; pwd)
 #printf "avi_sbfmf_dir: $avi_sbfmf_dir\n"
 #pipeline_scripts_dir=$(dirname "$SCRIPT_FOLDER_PATH")
 #printf "pipeline_scripts_dir: $pipeline_scripts_dir\n"
-pipeline_dir=$("$SCRIPTS_FOLDER_PATH/Tools/pipeline_settings.pl" pipeline_root)
-printf "pipeline_dir: $pipeline_dir\n"
+# pipeline_dir=$("$SCRIPTS_FOLDER_PATH/Tools/pipeline_settings.pl" pipeline_root)
+# printf "pipeline_dir: $pipeline_dir\n"
 do_sage_load=$("$SCRIPTS_FOLDER_PATH/Tools/pipeline_settings.pl" do_sageload_str)
 printf "do_sage_load: $do_sage_load\n"
 
@@ -31,8 +30,8 @@ printf "do_sage_load: $do_sage_load\n"
 # do_sage_load: false
 
 # Make sure the next folders in the pipeline exist.
-mkdir -p "$pipeline_dir/00_quarantine_not_split"
-mkdir -p "$pipeline_dir/01_sbfmf_compressed"
+mkdir -p "$BOX_ROOT_PATH/00_quarantine_not_split"
+mkdir -p "$BOX_ROOT_PATH/01_sbfmf_compressed"
 
 if [ $do_sage_load = true ]
 then
@@ -40,7 +39,7 @@ then
     "$SCRIPTS_FOLDER_PATH/TubeSplitter/avi_extract_QC.pl";
 fi
 # Convert all tube AVI's to SBFMF.
-cd "$pipeline_dir"/00_incoming
+cd "$BOX_ROOT_PATH"/00_incoming
 ls */*/*seq*tube*.avi 2>/dev/null >/tmp/stacks.boxuser_avisbfmf;
 if [ -s /tmp/stacks.boxuser_avisbfmf ]
 then

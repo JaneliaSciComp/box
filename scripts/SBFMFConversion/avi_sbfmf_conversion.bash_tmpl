@@ -11,8 +11,16 @@
 # Parameters:     $1: 
 # ****************************************************************************
 
-# setup for lsf
-. /misc/lsf/conf/profile.lsf
+# # setup for lsf
+# . /misc/lsf/conf/profile.lsf
+
+# Need to find sbmoviesuite
+#tube_splitter_folder_path=${PWD}
+scripts_folder_path="$grammar{pipeline_scripts_path}"
+box_root_folder_path=$( dirname "${scripts_folder_path}" )
+sbmovie_suite_folder_path="${box_root_folder_path}/sbmoviesuite"
+sbconvert_script_path="${sbmovie_suite_folder_path}/sbconvert_cluster.pl"
+printf "In avi_sbfmf_conversion.bash_tmpl, sbconvert_script_path is ${sbconvert_script_path}\n"
 
 # Move the sym. link along the pipeline.
 # In this case we need to copy the sym. link because we are running via the "bash" XML command
@@ -31,4 +39,4 @@ mkdir -p "$grammar{compressed_sbfmf_path}"
 # Link and run sbconvert.
 cd "$grammar{compressed_sbfmf_path}"
 ln -s ../*$grammar{tube}.avi .
-/groups/reiser/home/boxuser/lib/sbmoviesuite/sbconvert_cluster.pl -R -OR
+"${sbconvert_script_path}" -R -OR
