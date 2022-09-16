@@ -539,7 +539,7 @@ sub terminateProgram
 {
   my $message = shift;
   print { $handle || \*STDERR } "$message\n" if ($message);
-  &sendMail() if (scalar keys %mail);
+  # &sendMail() if (scalar keys %mail);  # no more e-mailing
   $handle->close if ($handle);
   $system_handle->close if ($system_handle);
   exit(($message) ? -1 : 0);
