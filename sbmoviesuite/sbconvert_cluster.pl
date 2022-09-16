@@ -101,7 +101,6 @@ module load cse-build
 module load cse/ctrax/latest
 
 # call the main script, passing in all command-line parameters
-#$python2_interpreter_path $sbconvertdotsh_path $filename -p $usebg_param_file
 python2 $sbconvertdotsh_path $filename -p $usebg_param_file
 
 ~;
