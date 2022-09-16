@@ -70,8 +70,8 @@ while( (my $filename = readdir(DIR))){
         my $sgeid = "sbconvert_" . $filename . "_" . $$;
         my $shfilename = $sgeid . ".sh";
         write_qsub_sh($shfilename,$filename,$usebg_param_file,$sbconvertdotpy_path,$cots_folder_path,$python2_interpreter_path);
-        my $sbconvert_cmd = qq~bsub -J $sgeid -oo ./$shfilename.stdouterr.txt -eo ./$shfilename.stdouterr.txt -n 2 ./$shfilename~;
-        #my $sbconvert_cmd = qq~bsub -J $sgeid -o /dev/null -e /dev/null -n 2 ./$shfilename~;
+        #my $sbconvert_cmd = qq~bsub -J $sgeid -oo ./$shfilename.stdouterr.txt -eo ./$shfilename.stdouterr.txt -n 2 ./$shfilename~;
+        my $sbconvert_cmd = qq~bsub -J $sgeid -o /dev/null -e /dev/null -n 2 ./$shfilename~;
         print "submitting to cluster: $sbconvert_cmd\n";
         system($sbconvert_cmd);
      }
