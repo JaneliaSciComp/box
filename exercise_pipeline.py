@@ -157,37 +157,37 @@ def main() :
     if not did_all_jobs_work :
         raise RuntimeError('Some jobs failed in tube-splitting stage')
 
-    # The second pipeline stage is to convert each per-tube .avi to a .sbfmf
-    # Annoyingly, this one doesn't spit out the job id's, so we have to do a bjobs
-    # before and one just after, and the setdiff is the job id list
-    printfe('\n\n\n***Stage 2***\n')
-    splitter_script_path = os.path.join(this_folder_path, 'scripts', 'SBFMFConversion', 'avi_sbfmf_conversion.sh')
-    stdout = run_subprocess_and_return_stdout(['bjobs'])
-    job_ids_before = scrape_bjobs_stdout_for_job_ids(stdout)
-    run_subprocess([splitter_script_path])
-    stdout = run_subprocess_and_return_stdout(['bjobs'])
-    job_ids_after = scrape_bjobs_stdout_for_job_ids(stdout)
-    job_ids = listsetdiff(job_ids_after, job_ids_before)
-    status_from_job_index = bwait(job_ids)
-    printe('sbfmf-conversion job statuses: ', status_from_job_index)
-    did_all_jobs_work = all([status==+1 for status in status_from_job_index])
-    if not did_all_jobs_work :
-        raise RuntimeError('Some jobs failed in sbfmf-conversion stage')
+    # # The second pipeline stage is to convert each per-tube .avi to a .sbfmf
+    # # Annoyingly, this one doesn't spit out the job id's, so we have to do a bjobs
+    # # before and one just after, and the setdiff is the job id list
+    # printfe('\n\n\n***Stage 2***\n')
+    # splitter_script_path = os.path.join(this_folder_path, 'scripts', 'SBFMFConversion', 'avi_sbfmf_conversion.sh')
+    # stdout = run_subprocess_and_return_stdout(['bjobs'])
+    # job_ids_before = scrape_bjobs_stdout_for_job_ids(stdout)
+    # run_subprocess([splitter_script_path])
+    # stdout = run_subprocess_and_return_stdout(['bjobs'])
+    # job_ids_after = scrape_bjobs_stdout_for_job_ids(stdout)
+    # job_ids = listsetdiff(job_ids_after, job_ids_before)
+    # status_from_job_index = bwait(job_ids)
+    # printe('sbfmf-conversion job statuses: ', status_from_job_index)
+    # did_all_jobs_work = all([status==+1 for status in status_from_job_index])
+    # if not did_all_jobs_work :
+    #     raise RuntimeError('Some jobs failed in sbfmf-conversion stage')
 
-    # The third pipeline stage does the actual tracking
-    printfe('\n\n\n***Stage 3***\n')
-    splitter_script_path = os.path.join(this_folder_path, 'scripts', 'FlyTracking', 'fotrak.sh')
-    (stdout, stderr) = run_subprocess_and_return_stdout_and_stderr([splitter_script_path])
-    printe('stdout:')
-    printe(stdout)
-    printe('stderr:')
-    printe(stderr)
-    job_ids = scrape_bsub_stdout_for_job_ids(stdout)
-    status_from_job_index = bwait(job_ids)
-    printe('fly-tracking job statuses: ', status_from_job_index)
-    did_all_jobs_work = all([status==+1 for status in status_from_job_index])
-    if not did_all_jobs_work :
-        raise RuntimeError('Some jobs failed in fly-tracking stage')
+    # # The third pipeline stage does the actual tracking
+    # printfe('\n\n\n***Stage 3***\n')
+    # splitter_script_path = os.path.join(this_folder_path, 'scripts', 'FlyTracking', 'fotrak.sh')
+    # (stdout, stderr) = run_subprocess_and_return_stdout_and_stderr([splitter_script_path])
+    # printe('stdout:')
+    # printe(stdout)
+    # printe('stderr:')
+    # printe(stderr)
+    # job_ids = scrape_bsub_stdout_for_job_ids(stdout)
+    # status_from_job_index = bwait(job_ids)
+    # printe('fly-tracking job statuses: ', status_from_job_index)
+    # did_all_jobs_work = all([status==+1 for status in status_from_job_index])
+    # if not did_all_jobs_work :
+    #     raise RuntimeError('Some jobs failed in fly-tracking stage')
 
     # Declare victory
     printfe("Pipeline finished successfully.\n")
