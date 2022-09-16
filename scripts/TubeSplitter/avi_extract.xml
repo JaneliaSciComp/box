@@ -53,14 +53,12 @@
   <counter>Submissions</counter>
   <pass>Terminal</pass>
 </step>
-<!--
 <step>
   <name>Bad_submit</name>
   <action>mail_stack</action>
-  <recipient>taylora@janelia.hhmi.org</recipient>
+  <recipient></recipient>
   <pass>Terminal</pass>
 </step>
--->
 
 <step>
   <name>Cleanup</name>
