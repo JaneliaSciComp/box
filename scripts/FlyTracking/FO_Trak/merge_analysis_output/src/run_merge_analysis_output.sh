@@ -15,11 +15,7 @@ else
   MCRROOT=$1
   echo ---
   MWE_ARCH="glnxa64" ;
-  if [ "$MWE_ARCH" = "sol64" ] ; then
-	LD_LIBRARY_PATH=.:/misc/lib/lwp:${MCRROOT}/runtime/glnxa64 ; 
-  else
-  	LD_LIBRARY_PATH=.:${MCRROOT}/runtime/glnxa64 ;
-  fi
+  LD_LIBRARY_PATH=.:${MCRROOT}/runtime/glnxa64 ;
   LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${MCRROOT}/bin/glnxa64 ;
   LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${MCRROOT}/sys/os/glnxa64;
   if [ "$MWE_ARCH" = "maci" -o "$MWE_ARCH" = "maci64" ]; then

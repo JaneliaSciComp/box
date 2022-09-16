@@ -1,21 +1,22 @@
 #!/bin/bash
-#. /misc/lsf/conf/profile.lsf
-#source /misc/local/SOURCEME
-#export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/misc/local/matlab-2013a/bin/glnxa64"
 
 BASH_SOURCE_0=${BASH_SOURCE[0]}
 printf "BASH_SOURCE_0: $BASH_SOURCE_0\n"
-SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE[0]})
-printf "SCRIPT_FILE_PATH: $SCRIPT_FILE_PATH\n"
-SCRIPT_FOLDER_PATH=$(dirname "$SCRIPT_FILE_PATH")
-printf "SCRIPT_FOLDER_PATH: $SCRIPT_FOLDER_PATH\n"
-SCRIPTS_FOLDER_PATH=$( dirname "$SCRIPT_FOLDER_PATH" )
+THIS_SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE_0})
+printf "THIS_SCRIPT_FILE_PATH: $THIS_SCRIPT_FILE_PATH\n"
+FLY_TRACKING_FOLDER_PATH=$(dirname "$THIS_SCRIPT_FILE_PATH")
+printf "FLY_TRACKING_FOLDER_PATH: $FLY_TRACKING_FOLDER_PATH\n"
+SCRIPTS_FOLDER_PATH=$( dirname "$FLY_TRACKING_FOLDER_PATH" )
 printf "SCRIPTS_FOLDER_PATH: $SCRIPTS_FOLDER_PATH\n"
-export PATH="$PATH:/misc/sc/pipeline/bin:$SCRIPTS_FOLDER_PATH/bin"
-#source "$SCRIPTS_FOLDER_PATH/SOURCEME"
+BOX_ROOT_PATH=$( dirname "$SCRIPTS_FOLDER_PATH" )
+printf "BOX_ROOT_PATH: $BOX_ROOT_PATH\n"
+PIPELINE_ROOT_PATH="$BOX_ROOT_PATH/informatics-pipeline"
+export PATH="$PATH:$PIPELINE_ROOT_PATH/bin:$SCRIPTS_FOLDER_PATH/bin"
 
-fotrak_dir=$(cd "$(dirname "$0")"; pwd)
-pipeline_scripts_dir=$(dirname "$fotrak_dir")
+#fotrak_dir=$(cd "$(dirname "$0")"; pwd)
+fotrak_dir="$FLY_TRACKING_FOLDER_PATH"
+#pipeline_scripts_dir=$(dirname "$fotrak_dir")
+pipeline_scripts_dir="$SCRIPTS_FOLDER_PATH"
 pipeline_dir=$("$pipeline_scripts_dir/Tools/pipeline_settings.pl" pipeline_root)
 avi_sbfmf_dir="$pipeline_scripts_dir"/SBFMFConversion
 do_sage_load=$("$pipeline_scripts_dir/Tools/pipeline_settings.pl" do_sageload_str)

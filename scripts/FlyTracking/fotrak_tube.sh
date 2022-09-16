@@ -5,10 +5,15 @@
 tube_path="$1"
 output_path="$2"
 
-fotrak_dir=$(cd "$(dirname "$0")"; pwd)
+bash_source_0=${BASH_SOURCE[0]}
+this_script_file_path=$(realpath ${bash_source_0})
+fotrak_dir=$(dirname "$this_script_file_path")
 pipeline_scripts_path=$(dirname "$fotrak_dir")
+box_root_folder_path=$(dirname "$pipeline_scripts_path")
+matutil_folder_path="${box_root_folder_path}/matutil"
+printf "matutil_folder_path: ${matutil_folder_path}\n"
 
-source /misc/local/matutil/mcr_select.sh 2013a
+source "${matutil_folder_path}/mcr_select.sh" 2013a
 
 cd "$tube_path"
 for sbfmf in `ls *.sbfmf`
@@ -29,10 +34,10 @@ do
         mkdir -p "$output_dir_path"
         chmod 775 "$output_dir_path"
         
-        "$pipeline_scripts_path/FlyTracking/build/distrib/fo_trak" \
-            /groups/reiser/home/boxuser/box/scripts/FlyTracking/FO_Trak/params_Olympiad.txt \
-            "$sbfmf_path" \
-            "$output_dir_path"
+        "${fotrak_dir}/build/distrib/fo_trak" \
+            "${fotrak_dir}/FO_Trak/params_Olympiad.txt \
+            "${sbfmf_path}" \
+            "${output_dir_path}"
     fi
     
     echo "==========================================================================================="
@@ -40,4 +45,4 @@ do
     echo ""
 done
 
-source /misc/local/matutil/mcr_select.sh clean
+source "${matutil_folder_path}/mcr_select.sh" clean
