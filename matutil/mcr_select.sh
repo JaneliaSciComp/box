@@ -9,14 +9,17 @@
 #   source /misc/local/matutil/mcr_select.sh 2012b
 #   source /misc/local/matutil/mcr_select.sh clean
 
+# Determine the path to this script file, and the folder containing it
+bash_source_0=${BASH_SOURCE[0]}
+printf "bash_source_0: $bash_source_0\n"
+this_script_file_path=$(realpath ${bash_source_0})
+printf "this_script_file_path: $this_script_file_path\n"
+box_root_path=$(dirname "${this_script_file_path}")
+MCRROOT="${box_root_path}/local/MATLAB_Compiler_Runtime/v81"
+
 if [ $# -eq 0 ]; then
     echo "Available MATLAB runtimes:"
-    ls -d /misc/local/matlab-* 2>/dev/null | sed 's/\/misc\/local\/matlab-/* /'
-    ls -d /opt/matlab_* 2>/dev/null | sed 's/\/opt\/matlab_/* /' | sed 's/$/ (in \/opt)/'
-    if [ `uname` = 'Darwin' ]; then
-        ls -d /Applications/MATLAB_* 2>/dev/null | sed 's/\/Applications\/MATLAB_/* /'
-        ls -d /Applications/MATLAB/MATLAB_Compiler_Runtime/* 2>/dev/null | sed 's/\/Applications\/MATLAB\/MATLAB_Compiler_Runtime\//* /'
-    fi
+    echo ${MCRROOT}
 elif [ $# -eq 1 ]; then
     if [ $1 = "clean" ]; then
         # Remove the MCR cache directory.
@@ -26,35 +29,17 @@ elif [ $# -eq 1 ]; then
             echo "No MCR cache directory is defined."
         fi
     else
-        MCRROOT=/misc/local/matlab-$1
+        # We ignore the argument and just use the one MCR we use
+        echo "Hopefully you want to use the MCR at ${MCRROOT}."
         if [ ! -d $MCRROOT ]; then
-            MCRROOT=/opt/matlab_$1
-        fi
-        if [ ! -d $MCRROOT ]; then
-            MCRROOT=/Applications/MATLAB_$1
-        fi
-        if [ ! -d $MCRROOT ]; then
-            MCRROOT=/Applications/MATLAB/MATLAB_Compiler_Runtime/$1
-        fi
-        
-        if [ ! -d $MCRROOT ]; then
-            if [ `uname` = 'Darwin' ]; then
-                echo "Could not find a MATLAB runtime at /misc/local/matlab-$1, /opt/matlab_$1, /Applications/MATLAB_$1 or $MCRROOT"
-            else
-                echo "Could not find a MATLAB runtime at /misc/local/matlab-$1 or $MCRROOT"
-            fi
+            echo "Could not find a MATLAB runtime at $MCRROOT"
         else
             # Set up the MATLAB environment
             export PATH="$MCRROOT/bin:$PATH"
             
-            if [ `uname` = 'Darwin' ]; then
-                DYLD_LIBRARY_PATH="${MCRROOT}/runtime/maci64:${MCRROOT}/bin/maci64:${MCRROOT}/sys/os/maci64:$LD_LIBRARY_PATH" ;
-                export DYLD_LIBRARY_PATH
-            else
-                MCRJRE="${MCRROOT}/sys/java/jre/glnxa64/jre/lib/amd64" ;
-                LD_LIBRARY_PATH="${MCRROOT}/runtime/glnxa64:${MCRROOT}/bin/glnxa64:${MCRROOT}/sys/os/glnxa64:${MCRJRE}/native_threads:${MCRJRE}/server:$LD_LIBRARY_PATH" ;
-                export LD_LIBRARY_PATH
-            fi
+            MCRJRE="${MCRROOT}/sys/java/jre/glnxa64/jre/lib/amd64" ;
+            LD_LIBRARY_PATH="${MCRROOT}/runtime/glnxa64:${MCRROOT}/bin/glnxa64:${MCRROOT}/sys/os/glnxa64:${MCRJRE}/native_threads:${MCRJRE}/server:$LD_LIBRARY_PATH" ;
+            export LD_LIBRARY_PATH
             
             export XAPPLRESDIR="${MCRROOT}/X11/app-defaults";
             
