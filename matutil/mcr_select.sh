@@ -14,7 +14,8 @@ bash_source_0=${BASH_SOURCE[0]}
 printf "bash_source_0: $bash_source_0\n"
 this_script_file_path=$(realpath ${bash_source_0})
 printf "this_script_file_path: $this_script_file_path\n"
-box_root_path=$(dirname "${this_script_file_path}")
+matutil_folder_path=$(dirname "${this_script_file_path}")
+box_root_path=$(dirname "${matutil_folder_path}")
 MCRROOT="${box_root_path}/local/MATLAB_Compiler_Runtime/v81"
 
 if [ $# -eq 0 ]; then
