@@ -32,7 +32,7 @@ if ( $options->{'H'} || $options->{'-help'} || $options->{'help'}) {
         exit 0;
 }
 
-print STDERR "Inside sbconvert_cluster.pl"
+print STDERR "Inside sbconvert_cluster.pl";
 
 # Sort out where various folders, files of interest are
 my $sbmoviesuite_folder_path = dirname(__FILE__);
