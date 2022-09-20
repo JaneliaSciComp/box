@@ -59,7 +59,7 @@ print "generating background: $cmd\n";
 system($cmd);
 
 unless (-e "all-bg.pickle") {
-        print "Error: No background file generated.";
+        print "Error in sbconvert_cluster.pl: No background file (all-bg.pickle) seems to have been generated.  Exiting.";
         exit(1);
 }
 
