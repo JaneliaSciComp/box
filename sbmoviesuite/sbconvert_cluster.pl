@@ -32,7 +32,7 @@ if ( $options->{'H'} || $options->{'-help'} || $options->{'help'}) {
         exit 0;
 }
 
-print STDERR "Inside sbconvert_cluster.pl";
+print STDERR "Inside sbconvert_cluster.pl\n";
 
 # Sort out where various folders, files of interest are
 my $sbmoviesuite_folder_path = dirname(__FILE__);
@@ -56,7 +56,7 @@ my $bg_run_id = "sbconvert_" . $random;
 my $sbconvertdotsh_path = "$sbmoviesuite_folder_path/sbconvert.sh";
 my $cmd = qq~$sbconvertdotsh_path "$current_dir/" -p $calcbg_param_file~;
 
-print STDERR "generating background using command: $cmd\n";
+print STDERR "Generating background using command: $cmd\n";
 
 system($cmd);
 
