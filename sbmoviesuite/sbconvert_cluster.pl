@@ -67,11 +67,11 @@ my $sbconvertdotpy_path = "$sbmoviesuite_folder_path/sbconvert.py";
 opendir ( DIR, $current_dir ) || die "Error in opening dir $current_dir\n";
 while( (my $filename = readdir(DIR))){
      if ($filename =~ /\.avi$/) {
-        my $sgeid = "sbconvert_" . $filename . "_" . $$;
-        my $shfilename = $sgeid . ".sh";
+        my $jobname = "sbconvert_" . $filename . "_" . $$;
+        my $shfilename = $jobname . ".sh";
         write_qsub_sh($shfilename,$filename,$usebg_param_file,$sbconvertdotpy_path,$cots_folder_path,$python2_interpreter_path);
-        #my $sbconvert_cmd = qq~bsub -J $sgeid -oo ./$shfilename.stdouterr.txt -eo ./$shfilename.stdouterr.txt -n 2 ./$shfilename~;
-        my $sbconvert_cmd = qq~bsub -J $sgeid -o /dev/null -e /dev/null -n 2 ./$shfilename~;
+        my $sbconvert_cmd = qq~bsub -J $jobname -oo ./$jobname.stdout -eo ./$jobname.stderr -n 2 ./$shfilename~;
+        #my $sbconvert_cmd = qq~bsub -J $jobname -o /dev/null -e /dev/null -n 2 ./$shfilename~;
         print "submitting to cluster: $sbconvert_cmd\n";
         system($sbconvert_cmd);
      }
