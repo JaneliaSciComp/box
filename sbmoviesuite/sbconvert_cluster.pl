@@ -28,9 +28,11 @@ Usage:
                 -OR     for Fly Olympiad only, removes source tube.avi if seq.avi file exists
 ~;
 if ( $options->{'H'} || $options->{'-help'} || $options->{'help'}) {
-        print $USAGE;
+        print STDERR $USAGE;
         exit 0;
 }
+
+print STDERR "Inside sbconvert_cluster.pl"
 
 # Sort out where various folders, files of interest are
 my $sbmoviesuite_folder_path = dirname(__FILE__);
@@ -46,7 +48,7 @@ my $usebg_param_file = "$sbmoviesuite_folder_path/sbparam-usebg.txt";
 $usebg_param_file = $options->{'cp'} if ($options->{'cp'});
 
 my $current_dir = getcwd;
-print "current_dir: $current_dir\n";
+print STDERR "current_dir: $current_dir\n";
 
 my $random = int(rand($$));
 my $bg_run_id = "sbconvert_" . $random;
@@ -54,12 +56,12 @@ my $bg_run_id = "sbconvert_" . $random;
 my $sbconvertdotsh_path = "$sbmoviesuite_folder_path/sbconvert.sh";
 my $cmd = qq~$sbconvertdotsh_path "$current_dir/" -p $calcbg_param_file~;
 
-print "generating background: $cmd\n";
+print STDERR "generating background using command: $cmd\n";
 
 system($cmd);
 
 unless (-e "all-bg.pickle") {
-        print "Error in sbconvert_cluster.pl: No background file (all-bg.pickle) seems to have been generated.  Exiting.";
+        print STDERR "Error in sbconvert_cluster.pl: No background file (all-bg.pickle) seems to have been generated.  Exiting.";
         exit(1);
 }
 
@@ -72,13 +74,13 @@ while( (my $filename = readdir(DIR))){
         write_qsub_sh($shfilename,$filename,$usebg_param_file,$sbconvertdotpy_path,$cots_folder_path,$python2_interpreter_path);
         my $sbconvert_cmd = qq~bsub -J $jobname -oo ./$jobname.stdout -eo ./$jobname.stderr -n 2 ./$shfilename~;
         #my $sbconvert_cmd = qq~bsub -J $jobname -o /dev/null -e /dev/null -n 2 ./$shfilename~;
-        print "submitting to cluster: $sbconvert_cmd\n";
+        print STDERR "submitting to cluster: $sbconvert_cmd\n";
         system($sbconvert_cmd);
      }
 }
 closedir(DIR);
 
-print "It will take a few minutes for the sbfmf conversion to finish\n";
+print STDERR "It will take a few minutes for the sbfmf conversion to finish\n";
 
 exit;
 
