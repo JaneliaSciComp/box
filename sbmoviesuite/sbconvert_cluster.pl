@@ -97,13 +97,6 @@ sub write_qsub_sh {
 # adapted from Mark Bolstad's "mtrax_batch"; removed the xvfb calls
 #   since sbconvert doesn't require a screen
 
-# # set up the environment
-# #source /misc/local/SCE/SCE/build/Modules-3.2.6/Modules/3.2.6/init/tcsh
-# module use $cots_folder_path
-# module avail
-# module load cse-build
-# module load cse/ctrax/latest
-
 # call the main script, passing in all command-line parameters
 $python2_interpreter_path $sbconvertdotpy_path $filename -p $usebg_param_file
 
