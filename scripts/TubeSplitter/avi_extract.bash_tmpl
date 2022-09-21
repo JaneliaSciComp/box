@@ -27,7 +27,8 @@ fi
 #tube_splitter_folder_path=${PWD}
 scripts_folder_path="$grammar{pipeline_scripts_path}"
 box_root_folder_path=$( dirname "${scripts_folder_path}" )
-python_interpreter_path="${box_root_folder_path}/local/python-2.7.11/bin/python2"
+#python_interpreter_path="${box_root_folder_path}/local/python-2.7.11/bin/python2"
+python_interpreter_path="${box_root_folder_path}/local/python-2-env/bin/python2"
 printf "In avi_extract.bash_tmpl, python_interpreter_path is ${python_interpreter_path}\n"
 
 cd "$grammar{avi_dir_path}"
