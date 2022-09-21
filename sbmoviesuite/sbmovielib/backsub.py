@@ -143,7 +143,7 @@ class BackSub:
 
         # which frame is the middle frame for computing the median?
         iseven = num.mod(bg_nframes,2) == 0
-        middle1 = num.floor(bg_nframes/2)
+        middle1 = num.int(num.floor(bg_nframes/2))
         print "middle1: %s" % repr(middle1)
         middle2 = middle1-1
 
