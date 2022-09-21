@@ -6,15 +6,18 @@
 # adapted from Mark Bolstad's "mtrax_batch"; removed the xvfb calls
 #   since sbconvert doesn't require a screen
 
+# Declare ourselves
+>&2 printf "In sbconvert.sh\n"
+
 # Determine the path to this script file, and the folder containing it
 BASH_SOURCE_0=${BASH_SOURCE[0]}
-printf "BASH_SOURCE_0: $BASH_SOURCE_0\n"
+>&2 printf "BASH_SOURCE_0: $BASH_SOURCE_0\n"
 THIS_SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE_0})
-printf "THIS_SCRIPT_FILE_PATH: $THIS_SCRIPT_FILE_PATH\n"
+>&2 printf "THIS_SCRIPT_FILE_PATH: $THIS_SCRIPT_FILE_PATH\n"
 SBMOVIE_SUITE_FOLDER_PATH=$(dirname "$THIS_SCRIPT_FILE_PATH")
 BOX_ROOT_PATH=$(dirname "$SBMOVIE_SUITE_FOLDER_PATH")
 SCE_PATH="${BOX_ROOT_PATH}/local/SCE"
-printf "SCE_PATH: $SCE_PATH\n"
+>&2 printf "SCE_PATH: $SCE_PATH\n"
 #python2_interpreter_path="$BOX_ROOT_PATH/local/python-2.7.11/bin/python"  # used to me /misc/local/old_software/python-2.7.11/bin/python
 python2_interpreter_path="$BOX_ROOT_PATH/local/python-2-env/bin/python2"  # used to me /misc/local/old_software/python-2.7.11/bin/python
 
