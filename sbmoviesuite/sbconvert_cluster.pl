@@ -37,8 +37,8 @@ print STDERR "Inside sbconvert_cluster.pl\n";
 # Sort out where various folders, files of interest are
 my $sbmoviesuite_folder_path = dirname(__FILE__);
 my $box_root_folder_path = dirname($sbmoviesuite_folder_path);
-my $sce_root_folder_path = "$box_root_folder_path/local/SCE";  # used to be /misc/local/SCE
-my $cots_folder_path = "$sce_root_folder_path/SCE/build/COTS";
+#my $sce_root_folder_path = "$box_root_folder_path/local/SCE";  # used to be /misc/local/SCE
+#my $cots_folder_path = "$sce_root_folder_path/SCE/build/COTS";
 #my $python2_interpreter_path = "$box_root_folder_path/local/python-2.7.11/bin/python";  # used to me /misc/local/old_software/python-2.7.11/bin/python
 my $python2_interpreter_path = "$box_root_folder_path/local/python-2-env/bin/python";  # used to me /misc/local/old_software/python-2.7.11/bin/python
 
@@ -72,7 +72,7 @@ while( (my $filename = readdir(DIR))){
      if ($filename =~ /\.avi$/) {
         my $jobname = "sbconvert_" . $filename . "_" . $$;
         my $shfilename = $jobname . ".sh";
-        write_qsub_sh($shfilename,$filename,$usebg_param_file,$sbconvertdotpy_path,$cots_folder_path,$python2_interpreter_path);
+        write_qsub_sh($shfilename,$filename,$usebg_param_file,$sbconvertdotpy_path,$python2_interpreter_path);
         my $sbconvert_cmd = qq~bsub -J $jobname -oo ./$jobname.stdout -eo ./$jobname.stderr -n 2 ./$shfilename~;
         #my $sbconvert_cmd = qq~bsub -J $jobname -o /dev/null -e /dev/null -n 2 ./$shfilename~;
         print STDERR "submitting to cluster: $sbconvert_cmd\n";
@@ -86,7 +86,7 @@ print STDERR "It will take a few minutes for the sbfmf conversion to finish\n";
 exit;
 
 sub write_qsub_sh {
-	my ($shfilename,$filename,$usebg_param_file,$sbconvertdotpy_path,$cots_folder_path,$python2_interpreter_path) = @_;
+	my ($shfilename,$filename,$usebg_param_file,$sbconvertdotpy_path,$python2_interpreter_path) = @_;
 	
 	open(SHFILE,">$shfilename") || die 'Cannot write $shfilename';
 
@@ -97,12 +97,12 @@ sub write_qsub_sh {
 # adapted from Mark Bolstad's "mtrax_batch"; removed the xvfb calls
 #   since sbconvert doesn't require a screen
 
-# set up the environment
-#source /misc/local/SCE/SCE/build/Modules-3.2.6/Modules/3.2.6/init/tcsh
-module use $cots_folder_path
-module avail
-module load cse-build
-module load cse/ctrax/latest
+# # set up the environment
+# #source /misc/local/SCE/SCE/build/Modules-3.2.6/Modules/3.2.6/init/tcsh
+# module use $cots_folder_path
+# module avail
+# module load cse-build
+# module load cse/ctrax/latest
 
 # call the main script, passing in all command-line parameters
 $python2_interpreter_path $sbconvertdotpy_path $filename -p $usebg_param_file

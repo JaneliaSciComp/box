@@ -16,8 +16,8 @@ THIS_SCRIPT_FILE_PATH=$(realpath ${BASH_SOURCE_0})
 >&2 printf "THIS_SCRIPT_FILE_PATH: $THIS_SCRIPT_FILE_PATH\n"
 SBMOVIE_SUITE_FOLDER_PATH=$(dirname "$THIS_SCRIPT_FILE_PATH")
 BOX_ROOT_PATH=$(dirname "$SBMOVIE_SUITE_FOLDER_PATH")
-SCE_PATH="${BOX_ROOT_PATH}/local/SCE"
->&2 printf "SCE_PATH: $SCE_PATH\n"
+#SCE_PATH="${BOX_ROOT_PATH}/local/SCE"
+#>&2 printf "SCE_PATH: $SCE_PATH\n"
 #python2_interpreter_path="$BOX_ROOT_PATH/local/python-2.7.11/bin/python"  # used to me /misc/local/old_software/python-2.7.11/bin/python
 python2_interpreter_path="$BOX_ROOT_PATH/local/python-2-env/bin/python2"  # used to me /misc/local/old_software/python-2.7.11/bin/python
 
