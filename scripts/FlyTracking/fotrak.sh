@@ -11,32 +11,25 @@ printf "SCRIPTS_FOLDER_PATH: $SCRIPTS_FOLDER_PATH\n"
 BOX_ROOT_PATH=$( dirname "$SCRIPTS_FOLDER_PATH" )
 printf "BOX_ROOT_PATH: $BOX_ROOT_PATH\n"
 PIPELINE_ROOT_PATH="$BOX_ROOT_PATH/informatics-pipeline"
-export PATH="$PATH:$PIPELINE_ROOT_PATH/bin:$SCRIPTS_FOLDER_PATH/bin"
+#export PATH="$PATH:$PIPELINE_ROOT_PATH/bin:$SCRIPTS_FOLDER_PATH/bin"
+pipeline_script_path="$PIPELINE_ROOT_PATH/bin/pipeline"
+printf "pipeline_script_path: $pipeline_script_path\n"
+perl_interpreter_path="${BOX_ROOT_PATH}/local/python-2-env/bin/perl"
+printf "perl_interpreter_path: $perl_interpreter_path\n"
 
-#fotrak_dir=$(cd "$(dirname "$0")"; pwd)
 fotrak_dir="$FLY_TRACKING_FOLDER_PATH"
-#pipeline_scripts_dir=$(dirname "$fotrak_dir")
-pipeline_scripts_dir="$SCRIPTS_FOLDER_PATH"
-pipeline_dir=$("$pipeline_scripts_dir/Tools/pipeline_settings.pl" pipeline_root)
-avi_sbfmf_dir="$pipeline_scripts_dir"/SBFMFConversion
-do_sage_load=$("$pipeline_scripts_dir/Tools/pipeline_settings.pl" do_sageload_str)
+SCRIPTS_FOLDER_PATH="$SCRIPTS_FOLDER_PATH"
+avi_sbfmf_dir="$SCRIPTS_FOLDER_PATH"/SBFMFConversion
 
 # Make sure the next folders in the pipeline exist.
-mkdir -p "$pipeline_dir/01_quarantine_not_compressed"
-mkdir -p "$pipeline_dir/02_fotracked"
-
-if [ $do_sage_load = true ]
-then
-    # All SBFMF jobs have finished, run follow up scripts.
-    "$avi_sbfmf_dir/store_sbfmf_stats.pl"
-    "$avi_sbfmf_dir/avi_sbfmf_conversion_QC.pl"
-fi
+mkdir -p "$BOX_ROOT_PATH/01_quarantine_not_compressed"
+mkdir -p "$BOX_ROOT_PATH/02_fotracked"
 
 # Make sure each experiment has a "Logs" directory.
 # (This normally happens at the transfer step but we're skipping that for re-tracking.)
-for exp_name in `ls "$pipeline_dir/01_sbfmf_compressed" 2>/dev/null`
+for exp_name in `ls "$BOX_ROOT_PATH/01_sbfmf_compressed" 2>/dev/null`
 do
-	mkdir -p "$pipeline_dir/01_sbfmf_compressed/$exp_name/Logs"
+	mkdir -p "$BOX_ROOT_PATH/01_sbfmf_compressed/$exp_name/Logs"
 done
 
 # Make sure the tracking tool has been built.
@@ -50,12 +43,12 @@ then
 fi
 
 # Now run fotrak on them.
-cd "$pipeline_dir/01_sbfmf_compressed"
+cd "$BOX_ROOT_PATH/01_sbfmf_compressed"
 ls -d */*/*sbfmf 2>/dev/null > /tmp/stacks.boxuser_box_fotrak
 if [ -s /tmp/stacks.boxuser_box_fotrak ]
 then
     # Make sure we're in the directory where this script was run from so the xml, etc. files can be found.
     cd "$fotrak_dir"
     
-    pipeline -v -config fotrak.xml -file /tmp/stacks.boxuser_box_fotrak
+    "${perl_interpreter_path}" "${pipeline_script_path}" -v -config fotrak.xml -file /tmp/stacks.boxuser_box_fotrak
 fi
