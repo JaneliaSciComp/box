@@ -48,6 +48,6 @@ then
     #echo $tube_splitter_dir
     #whereis pipeline    
     #which pipeline
-    "${perl_interpreter_path} "${pipeline_script_path}" -v -config avi_extract.xml -file /tmp/stacks.boxuser_avi_extract
+    "${perl_interpreter_path}" "${pipeline_script_path}" -v -config avi_extract.xml -file /tmp/stacks.boxuser_avi_extract
 fi
 echo "Milestone 6"
