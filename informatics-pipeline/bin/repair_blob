@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # The tracker software apparently doesn't check its own output,
 # so this program will find .blob files where the first row

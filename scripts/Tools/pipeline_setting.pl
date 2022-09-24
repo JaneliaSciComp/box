@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Print out one of the settings values from BoxPipeline.pm.
 #

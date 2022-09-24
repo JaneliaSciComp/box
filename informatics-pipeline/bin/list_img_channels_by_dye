@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Output LSM metadata (tab-delimited):
 #   Red channel

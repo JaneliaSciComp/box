@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # ****************************************************************************
 # Resource name:  qscore_populate
 # Written by:     Rob Svirskas

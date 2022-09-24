@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Libraries
 use lib '/usr/local/perl5/lib/perl5/site_perl/5.8.5';

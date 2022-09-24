@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # ****************************************************************************
 # Resource name:  zcombine
 # Written by:     Rob Svirskas
