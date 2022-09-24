@@ -1,0 +1,12 @@
+name: local/python-2-env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=2.7
+  - scipy=1.2
+  - perl=5.32
+  - perl-parse-recdescent
+  - perl-xml-simple
+prefix: local/python-2-env
