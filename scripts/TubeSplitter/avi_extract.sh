@@ -14,7 +14,11 @@ printf "SCRIPTS_FOLDER_PATH: $SCRIPTS_FOLDER_PATH\n"
 BOX_ROOT_PATH=$( dirname "$SCRIPTS_FOLDER_PATH" )
 printf "BOX_ROOT_PATH: $BOX_ROOT_PATH\n"
 PIPELINE_ROOT_PATH="$BOX_ROOT_PATH/informatics-pipeline"
-export PATH="$PATH:$PIPELINE_ROOT_PATH/bin:$SCRIPTS_FOLDER_PATH/bin"
+#export PATH="$PATH:$PIPELINE_ROOT_PATH/bin:$SCRIPTS_FOLDER_PATH/bin"
+pipeline_script_path="$PIPELINE_ROOT_PATH/bin/pipeline"
+printf "pipeline_script_path: $pipeline_script_path\n"
+perl_interpreter_path="${BOX_ROOT_PATH}/local/python-2-env/bin/perl"
+printf "perl_interpreter_path: $perl_interpreter_path\n"
 
 #source /misc/local/SOURCEME
 #source "$SCRIPTS_FOLDER_PATH/SOURCEME"
@@ -43,7 +47,7 @@ then
     #echo "Milestone 5"
     #echo $tube_splitter_dir
     #whereis pipeline    
-    which pipeline
-    pipeline -v -config avi_extract.xml -file /tmp/stacks.boxuser_avi_extract
+    #which pipeline
+    "${perl_interpreter_path} "${pipeline_script_path}" -v -config avi_extract.xml -file /tmp/stacks.boxuser_avi_extract
 fi
 echo "Milestone 6"
